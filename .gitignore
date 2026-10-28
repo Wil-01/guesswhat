@@ -1,0 +1,7 @@
+guesswhat
+*.exe
+*.test
+*.out
+*.pdf
+.idea/
+.vscode/
