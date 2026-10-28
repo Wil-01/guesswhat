@@ -5,9 +5,41 @@ body {
   padding: 0 1rem;
 }
 
+.chat {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  height: 70vh;
+}
+
+#messages {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+#messages li {
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+}
+
+#messages li:nth-child(odd) {
+  background: #f3f3f3;
+}
+
+#messages li.system {
+  color: #888;
+  font-style: italic;
+}
+
 #form {
   display: flex;
   gap: 0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid #ccc;
 }
 
 #input {

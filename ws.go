@@ -15,9 +15,13 @@ type Message struct {
 }
 
 func handleWS(ws *websocket.Conn) {
-	defer ws.Close()
+	hub.add(ws)
+	defer func() {
+		hub.remove(ws)
+		ws.Close()
+	}()
+
 	dec := json.NewDecoder(ws)
-	enc := json.NewEncoder(ws)
 	for {
 		var msg Message
 		if err := dec.Decode(&msg); err != nil {
@@ -26,10 +30,10 @@ func handleWS(ws *websocket.Conn) {
 			}
 			return
 		}
-		msg.Message = strings.ToUpper(msg.Message)
-		if err := enc.Encode(msg); err != nil {
-			fmt.Fprintln(os.Stderr, "encode error:", err)
-			return
+		msg.Message = strings.TrimSpace(msg.Message)
+		if msg.Message == "" {
+			continue
 		}
+		hub.broadcast(msg)
 	}
 }
