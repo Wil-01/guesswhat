@@ -18,20 +18,20 @@ func dial(t *testing.T, srv *httptest.Server) *websocket.Conn {
 	return ws
 }
 
-func TestEchoUppercase(t *testing.T) {
+func TestEchoUppercaseJSON(t *testing.T) {
 	srv := httptest.NewServer(websocket.Handler(handleWS))
 	defer srv.Close()
 	ws := dial(t, srv)
 	defer ws.Close()
 
-	if err := websocket.Message.Send(ws, "hello"); err != nil {
+	if err := websocket.JSON.Send(ws, Message{Message: "hello"}); err != nil {
 		t.Fatal(err)
 	}
-	var got string
-	if err := websocket.Message.Receive(ws, &got); err != nil {
+	var got Message
+	if err := websocket.JSON.Receive(ws, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got != "HELLO" {
-		t.Fatalf("got %q, want %q", got, "HELLO")
+	if got.Message != "HELLO" {
+		t.Fatalf("got %q, want %q", got.Message, "HELLO")
 	}
 }
