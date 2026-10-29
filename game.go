@@ -23,10 +23,15 @@ func (r *Room) start(c *Client) error {
 		return errAlreadyStarted
 	case len(r.clients) < minPlayers:
 		return errNotEnoughPlayers
+	case r.teams && !r.teamsReady():
+		return errTeamsTooSmall
 	}
 	for _, p := range r.clients {
 		p.score = 0
 	}
+	r.teamScores = [teamCount + 1]int{}
+	r.lastDrawer = [teamCount + 1]*Client{}
+	r.drawTeam = rand.IntN(teamCount) + 1
 	r.state = StatePlaying
 	r.round = 0
 	r.broadcast(GamePacket{Type: TypeGame, State: r.state})
@@ -41,12 +46,21 @@ func (r *Room) roundActive() bool {
 	return r.state == StatePlaying && r.drawer != nil
 }
 
+// pickDrawer avoids the previous drawer; with teams, it alternates teams and avoids that team's last drawer.
 func (r *Room) pickDrawer(previous *Client) *Client {
-	candidates := slices.DeleteFunc(slices.Clone(r.clients), func(c *Client) bool { return c == previous })
-	if len(candidates) == 0 {
-		candidates = r.clients
+	pool := r.clients
+	if r.teams {
+		r.drawTeam = nextTeam(r.drawTeam)
+		pool = slices.DeleteFunc(slices.Clone(r.clients), func(c *Client) bool { return c.team != r.drawTeam })
+		previous = r.lastDrawer[r.drawTeam]
 	}
-	return candidates[rand.IntN(len(candidates))]
+	candidates := slices.DeleteFunc(slices.Clone(pool), func(c *Client) bool { return c == previous })
+	if len(candidates) == 0 {
+		candidates = pool
+	}
+	drawer := candidates[rand.IntN(len(candidates))]
+	r.lastDrawer[drawer.team] = drawer
+	return drawer
 }
 
 func (r *Room) startRound(previous *Client) {
@@ -81,12 +95,18 @@ func (r *Room) roundPacket(c *Client) RoundPacket {
 	if c == r.drawer {
 		p.Word = r.word
 	}
+	if r.teams {
+		p.Team = r.drawer.team
+	}
 	return p
 }
 
 func (r *Room) guessed(c *Client) {
 	points := pointsFor(time.Until(r.roundEndsAt), r.roundDuration)
 	c.score += points
+	if r.teams {
+		r.teamScores[c.team] += points
+	}
 	r.broadcast(ChatPacket{Type: TypeSystem, Message: fmt.Sprintf("%s guessed the word! (+%d)", c.nickname, points)})
 	r.endRound(c, points)
 }
@@ -123,7 +143,7 @@ func (r *Room) nextRound(id int, previous *Client) {
 func (r *Room) endGame() {
 	ranking := r.players()
 	slices.SortStableFunc(ranking, func(a, b PlayerInfo) int { return cmp.Compare(b.Score, a.Score) })
-	r.broadcast(GameEndPacket{Type: TypeGameEnd, Players: ranking})
+	r.broadcast(GameEndPacket{Type: TypeGameEnd, Players: ranking, Teams: r.teamScoreList()})
 	r.close()
 }
 

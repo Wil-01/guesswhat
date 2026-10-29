@@ -18,6 +18,7 @@ const (
 	TypeGameEnd  = "gameEnd"
 	TypeSettings = "settings"
 	TypeAvatar   = "avatar"
+	TypeTeam     = "team"
 )
 
 type Envelope struct {
@@ -74,6 +75,7 @@ type PlayerInfo struct {
 	Drawer   bool   `json:"drawer"`
 	Score    int    `json:"score"`
 	Avatar   Avatar `json:"avatar"`
+	Team     int    `json:"team,omitempty"`
 }
 
 type AvatarPacket struct {
@@ -81,9 +83,16 @@ type AvatarPacket struct {
 	Avatar Avatar `json:"avatar"`
 }
 
+type TeamPacket struct {
+	Type string `json:"type"`
+	Team int    `json:"team"`
+}
+
+// Teams holds the team scores, in team order, when teams are enabled.
 type PlayersPacket struct {
 	Type    string       `json:"type"`
 	Players []PlayerInfo `json:"players"`
+	Teams   []int        `json:"teams,omitempty"`
 }
 
 type RoundPacket struct {
@@ -96,6 +105,7 @@ type RoundPacket struct {
 	Round     int    `json:"round"`
 	Rounds    int    `json:"rounds"`
 	Theme     string `json:"theme"`
+	Team      int    `json:"team,omitempty"`
 }
 
 type SettingsPacket struct {
@@ -114,6 +124,7 @@ type RoundEndPacket struct {
 type GameEndPacket struct {
 	Type    string       `json:"type"`
 	Players []PlayerInfo `json:"players"`
+	Teams   []int        `json:"teams,omitempty"`
 }
 
 type RoomInfo struct {
@@ -121,6 +132,7 @@ type RoomInfo struct {
 	Players int    `json:"players"`
 	State   string `json:"state"`
 	Theme   string `json:"theme"`
+	Teams   bool   `json:"teams"`
 }
 
 type GamePacket struct {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"io"
 	"net/http/httptest"
 	"strings"
@@ -30,6 +31,9 @@ type anyPacket struct {
 	Duration int64        `json:"duration"`
 	Theme    string       `json:"theme"`
 	Themes   []string     `json:"themes"`
+	Team     int          `json:"team"`
+	// Teams is a bool in settings and a score list in players packets.
+	Teams json.RawMessage `json:"teams"`
 }
 
 var testWords = mustMemoryStore()

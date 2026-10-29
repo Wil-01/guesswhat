@@ -22,6 +22,7 @@ type Settings struct {
 	Theme    string `json:"theme"`
 	Rounds   int    `json:"rounds"`
 	Duration int    `json:"duration"`
+	Teams    bool   `json:"teams"`
 }
 
 func defaultSettings() Settings {

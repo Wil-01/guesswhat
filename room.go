@@ -40,6 +40,7 @@ type Client struct {
 	nickname string
 	score    int
 	avatar   Avatar
+	team     int
 }
 
 type Room struct {
@@ -59,6 +60,11 @@ type Room struct {
 	history   []ChatPacket
 	drawing   []Stroke
 	nextID    int
+
+	teams      bool
+	drawTeam   int
+	teamScores [teamCount + 1]int
+	lastDrawer [teamCount + 1]*Client
 
 	rounds        int
 	round         int
@@ -88,7 +94,7 @@ func newRoom(words *WordStore) *Room {
 func (r *Room) info() RoomInfo {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return RoomInfo{Code: r.code, Players: len(r.clients), State: r.state, Theme: r.theme}
+	return RoomInfo{Code: r.code, Players: len(r.clients), State: r.state, Theme: r.theme, Teams: r.teams}
 }
 
 func (r *Room) join(conn *websocket.Conn) (*Client, error) {
@@ -105,7 +111,7 @@ func (r *Room) join(conn *websocket.Conn) (*Client, error) {
 		r.cleanup = nil
 	}
 	r.nextID++
-	c := &Client{conn: conn, id: r.nextID, nickname: fmt.Sprintf("guest%d", r.nextID), avatar: randomAvatar()}
+	c := &Client{conn: conn, id: r.nextID, nickname: fmt.Sprintf("guest%d", r.nextID), avatar: randomAvatar(), team: r.smallestTeam()}
 	r.clients = append(r.clients, c)
 	if r.admin == nil {
 		r.admin = c
@@ -139,6 +145,8 @@ func (r *Room) leave(c *Client) {
 		switch {
 		case len(r.clients) < minPlayers:
 			r.stopGame("Not enough players left.")
+		case r.teams && !r.teamsReady():
+			r.stopGame("A team doesn't have enough players left.")
 		case c == r.drawer:
 			r.broadcast(ChatPacket{Type: TypeSystem, Message: "The drawer has left."})
 			r.endRound(nil, 0)
@@ -169,6 +177,9 @@ func (r *Room) chat(c *Client, text string) error {
 			return errRevealWord
 		}
 		if c != r.drawer && normalize(text) == normalize(r.word) {
+			if r.teams && c.team != r.drawer.team {
+				return errNotYourTeam
+			}
 			r.guessed(c)
 			return nil
 		}
@@ -235,6 +246,7 @@ func (r *Room) setSettings(c *Client, s Settings) error {
 	}
 	r.applySettings(s)
 	r.broadcast(r.settingsPacket())
+	r.broadcastPlayers()
 	return nil
 }
 
@@ -261,6 +273,7 @@ func (r *Room) applySettings(s Settings) {
 	r.theme = s.Theme
 	r.rounds = s.Rounds
 	r.roundDuration = time.Duration(s.Duration) * time.Second
+	r.teams = s.Teams
 }
 
 func (r *Room) settingsPacket() SettingsPacket {
@@ -270,6 +283,7 @@ func (r *Room) settingsPacket() SettingsPacket {
 			Theme:    r.theme,
 			Rounds:   r.rounds,
 			Duration: int(r.roundDuration / time.Second),
+			Teams:    r.teams,
 		},
 		Themes: r.words.Themes(),
 	}
@@ -285,6 +299,9 @@ func (r *Room) players() []PlayerInfo {
 			Drawer:   r.state == StatePlaying && c == r.drawer,
 			Score:    c.score,
 			Avatar:   c.avatar,
+		}
+		if r.teams {
+			players[i].Team = c.team
 		}
 	}
 	return players
@@ -335,7 +352,7 @@ func (r *Room) clearDrawing() {
 }
 
 func (r *Room) broadcastPlayers() {
-	r.broadcast(PlayersPacket{Type: TypePlayers, Players: r.players()})
+	r.broadcast(PlayersPacket{Type: TypePlayers, Players: r.players(), Teams: r.teamScoreList()})
 }
 
 func (r *Room) broadcast(v any) {

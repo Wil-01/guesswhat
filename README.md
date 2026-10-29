@@ -25,8 +25,8 @@ On a fatal error the server writes to stderr and exits with code 84.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/api/rooms` | | `[{code, players, state, theme}]` public rooms |
-| `POST` | `/api/rooms` | `{private, theme, rounds, duration}`, all optional | `201 {code}` |
+| `GET` | `/api/rooms` | | `[{code, players, state, theme, teams}]` public rooms |
+| `POST` | `/api/rooms` | `{private, theme, rounds, duration, teams}`, all optional | `201 {code}` |
 | `GET` | `/api/themes` | | `["animaux", ...]` |
 | `GET` | `/ws?room=CODE` | | websocket |
 
@@ -54,8 +54,9 @@ Client to server:
 | `undo` | removes the last action |
 | `clear` | |
 | `avatar` | `avatar: {color, eyes, mouth}`, indexes in `[0, 12)`, `[0, 6)`, `[0, 6)` |
+| `team` | `team`: 1 or 2, before the game |
 | `start` | admin only |
-| `settings` | `theme` (empty for all), `rounds` (1-10), `duration` (30-180 s), admin only before the game |
+| `settings` | `theme` (empty for all), `rounds` (1-10), `duration` (30-180 s), `teams` (bool), admin only before the game |
 
 Server to client:
 
@@ -64,12 +65,12 @@ Server to client:
 | `nickname` | `id`, `nickname` |
 | `history` | `messages` |
 | `drawing` | `strokes`, full redraw (on join and after an undo) |
-| `players` | `players: [{id, nickname, admin, drawer, score, avatar}]` |
+| `players` | `players: [{id, nickname, admin, drawer, score, avatar, team}]`, `teams` scores when teams are on |
 | `game` | `state`: `waiting` or `playing` |
-| `settings` | `theme`, `rounds`, `duration` (s), `themes` |
-| `round` | `drawer`, `word` (drawer only), `hint`, `theme`, `duration`, `remaining` (ms), `round`, `rounds` |
+| `settings` | `theme`, `rounds`, `duration` (s), `teams`, `themes` |
+| `round` | `drawer`, `word` (drawer only), `hint`, `theme`, `duration`, `remaining` (ms), `round`, `rounds`, `team` (drawing team) |
 | `roundEnd` | `word`, `winner`, `points` |
-| `gameEnd` | `players` ranking, then the room is closed |
+| `gameEnd` | `players` ranking, `teams` scores, then the room is closed |
 | `message`, `system`, `error` | `message`, `nickname` |
 | `draw`, `clear` | same as client |
 
@@ -88,6 +89,7 @@ A stroke is one drawing operation, coordinates are in `[0, 1]`:
 - The first player in a room is its admin and can start the game (2 to 10 players).
 - A game has 3 rounds of 80 seconds by default, the admin can change it before starting; the drawer is drawn at random each round.
 - Points: 100 scaled by the remaining time, 10 minimum.
+- Team mode: players are split into two teams (each needs 2 players), teams draw in turn and only the drawer's teammates can guess; the guesser's points go to the team.
 - Empty rooms are removed after one minute.
 - Words live in `WORDS_DIR/<theme>.txt`, one per line, editable from the admin page; the defaults are in `words/`.
 - A word is unique across all themes (case and accents ignored).

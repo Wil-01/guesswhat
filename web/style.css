@@ -497,3 +497,51 @@ body {
 .profile-body .avatar-editor {
   margin-top: 0;
 }
+
+.settings label.check {
+  flex-direction: row;
+  align-items: center;
+}
+
+.team-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font-weight: bold;
+  color: #fff;
+}
+
+.team-header .team-name {
+  flex: 1;
+}
+
+.team-header .join-team {
+  padding: 0.15rem 0.5rem;
+  font-size: 0.8rem;
+}
+
+.team-header.team-1 {
+  background: #d64545;
+}
+
+.team-header.team-2 {
+  background: #3b6fd6;
+}
+
+.player.team-1,
+#ranking li.team-1 {
+  border-left: 4px solid #d64545;
+}
+
+.player.team-2,
+#ranking li.team-2 {
+  border-left: 4px solid #3b6fd6;
+}
+
+.team-result {
+  font-weight: bold;
+  text-align: center;
+}
