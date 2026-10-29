@@ -11,8 +11,9 @@ import (
 const addr = ":8080"
 
 func main() {
+	hub := newHub()
 	http.Handle("/", http.FileServer(http.Dir("web")))
-	http.Handle("/ws", websocket.Handler(handleWS))
+	http.Handle("/ws", websocket.Handler(hub.handleWS))
 
 	fmt.Println("listening on", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {

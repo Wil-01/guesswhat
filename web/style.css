@@ -5,6 +5,18 @@ body {
   padding: 0 1rem;
 }
 
+#nickname-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#nickname {
+  flex: 1;
+  padding: 0.4rem;
+}
+
 .chat {
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -24,6 +36,7 @@ body {
 #messages li {
   padding: 0.3rem 0.5rem;
   border-radius: 4px;
+  overflow-wrap: anywhere;
 }
 
 #messages li:nth-child(odd) {
@@ -33,6 +46,15 @@ body {
 #messages li.system {
   color: #888;
   font-style: italic;
+}
+
+#messages .author {
+  font-weight: bold;
+  margin-right: 0.3rem;
+}
+
+#messages li.mine .author {
+  color: #1a6fd1;
 }
 
 #form {

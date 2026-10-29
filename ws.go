@@ -6,34 +6,61 @@ import (
 	"io"
 	"os"
 	"strings"
+	"unicode/utf8"
 
 	"golang.org/x/net/websocket"
 )
 
-type Message struct {
-	Message string `json:"message"`
-}
+const maxNicknameLen = 20
 
-func handleWS(ws *websocket.Conn) {
-	hub.add(ws)
-	defer func() {
-		hub.remove(ws)
-		ws.Close()
-	}()
+func (h *Hub) handleWS(conn *websocket.Conn) {
+	defer conn.Close()
+	client := h.join(conn)
+	defer h.leave(client)
 
-	dec := json.NewDecoder(ws)
+	dec := json.NewDecoder(conn)
 	for {
-		var msg Message
-		if err := dec.Decode(&msg); err != nil {
+		var raw json.RawMessage
+		if err := dec.Decode(&raw); err != nil {
 			if err != io.EOF {
 				fmt.Fprintln(os.Stderr, "decode error:", err)
 			}
 			return
 		}
-		msg.Message = strings.TrimSpace(msg.Message)
-		if msg.Message == "" {
-			continue
+		if err := h.handlePacket(client, raw); err != nil {
+			fmt.Fprintln(os.Stderr, "packet error:", err)
 		}
-		hub.broadcast(msg)
 	}
+}
+
+func (h *Hub) handlePacket(c *Client, raw json.RawMessage) error {
+	var env Envelope
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return err
+	}
+	switch env.Type {
+	case TypeNickname:
+		var p NicknamePacket
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return err
+		}
+		name := strings.TrimSpace(p.Nickname)
+		if name == "" || utf8.RuneCountInString(name) > maxNicknameLen {
+			return fmt.Errorf("invalid nickname %q", p.Nickname)
+		}
+		h.rename(c, name)
+	case TypeMessage:
+		var p ChatPacket
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return err
+		}
+		text := strings.TrimSpace(p.Message)
+		if text == "" {
+			return nil
+		}
+		h.chat(c, text)
+	default:
+		return fmt.Errorf("unknown packet type %q", env.Type)
+	}
+	return nil
 }
