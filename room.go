@@ -187,6 +187,27 @@ func (r *Room) draw(from *Client, s Stroke) error {
 	return nil
 }
 
+func (r *Room) undo(c *Client) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.canDraw(c) {
+		return errNotDrawer
+	}
+	if len(r.drawing) == 0 {
+		return nil
+	}
+	start := 0
+	for i := len(r.drawing) - 1; i >= 0; i-- {
+		if r.drawing[i].Begin {
+			start = i
+			break
+		}
+	}
+	r.drawing = r.drawing[:start]
+	r.broadcast(DrawingPacket{Type: TypeDrawing, Strokes: r.drawing})
+	return nil
+}
+
 func (r *Room) clear(c *Client) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -261,6 +282,9 @@ func (r *Room) close() {
 		return
 	}
 	r.closed = true
+	if r.lobby != nil {
+		r.lobby.remove(r.code)
+	}
 	r.stopTimer()
 	if r.cleanup != nil {
 		r.cleanup.Stop()
@@ -269,9 +293,6 @@ func (r *Room) close() {
 		c.conn.Close()
 	}
 	r.clients = nil
-	if r.lobby != nil {
-		r.lobby.remove(r.code)
-	}
 }
 
 func (r *Room) canDraw(c *Client) bool {

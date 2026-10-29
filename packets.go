@@ -9,6 +9,7 @@ const (
 	TypeDraw     = "draw"
 	TypeClear    = "clear"
 	TypeDrawing  = "drawing"
+	TypeUndo     = "undo"
 	TypePlayers  = "players"
 	TypeGame     = "game"
 	TypeStart    = "start"
@@ -44,11 +45,15 @@ type Point struct {
 	Y float64 `json:"y"`
 }
 
+// Stroke is one drawing operation; Begin marks the first operation of an undoable action.
 type Stroke struct {
-	From  Point   `json:"from"`
-	To    Point   `json:"to"`
-	Color string  `json:"color"`
-	Size  float64 `json:"size"`
+	Kind   string  `json:"kind"`
+	From   Point   `json:"from"`
+	To     Point   `json:"to"`
+	Points []Point `json:"points,omitempty"`
+	Color  string  `json:"color"`
+	Size   float64 `json:"size"`
+	Begin  bool    `json:"begin,omitempty"`
 }
 
 type DrawPacket struct {

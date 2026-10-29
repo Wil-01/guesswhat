@@ -89,6 +89,8 @@ func TestOnlyDrawerCanDraw(t *testing.T) {
 	expect(t, guesser.Conn, TypeError)
 	send(t, guesser.Conn, Envelope{Type: TypeClear})
 	expect(t, guesser.Conn, TypeError)
+	send(t, guesser.Conn, Envelope{Type: TypeUndo})
+	expect(t, guesser.Conn, TypeError)
 
 	send(t, r.drawer.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
 	expect(t, guesser.Conn, TypeDraw)
