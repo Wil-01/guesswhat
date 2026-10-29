@@ -18,6 +18,8 @@ const (
 
 	minPlayers           = 2
 	defaultRoundDuration = 80 * time.Second
+	defaultPauseDuration = 5 * time.Second
+	defaultRounds        = 3
 )
 
 var (
@@ -46,7 +48,10 @@ type Hub struct {
 	drawing []Stroke
 	nextID  int
 
+	rounds        int
+	round         int
 	roundDuration time.Duration
+	pauseDuration time.Duration
 	roundID       int
 	roundEndsAt   time.Time
 	timer         *time.Timer
@@ -57,7 +62,9 @@ func newHub() *Hub {
 		state:         StateWaiting,
 		history:       []ChatPacket{},
 		drawing:       []Stroke{},
+		rounds:        defaultRounds,
 		roundDuration: defaultRoundDuration,
+		pauseDuration: defaultPauseDuration,
 	}
 }
 
@@ -74,7 +81,7 @@ func (h *Hub) join(conn *websocket.Conn) *Client {
 	h.send(c, HistoryPacket{Type: TypeHistory, Messages: h.history})
 	h.send(c, DrawingPacket{Type: TypeDrawing, Strokes: h.drawing})
 	h.send(c, GamePacket{Type: TypeGame, State: h.state})
-	if h.state == StatePlaying {
+	if h.roundActive() {
 		h.send(c, h.roundPacket(c))
 	}
 	h.broadcastPlayers()
@@ -96,7 +103,8 @@ func (h *Hub) leave(c *Client) {
 		case len(h.clients) < minPlayers:
 			h.stopGame("Not enough players left.")
 		case c == h.drawer:
-			h.stopGame("The drawer has left.")
+			h.broadcast(ChatPacket{Type: TypeSystem, Message: "The drawer has left."})
+			h.endRound(nil, 0)
 		}
 	}
 	h.broadcastPlayers()
@@ -115,7 +123,7 @@ func (h *Hub) rename(c *Client, nickname string) {
 func (h *Hub) chat(c *Client, text string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.state == StatePlaying {
+	if h.roundActive() {
 		if c == h.drawer && strings.Contains(normalize(text), normalize(h.word)) {
 			return errRevealWord
 		}

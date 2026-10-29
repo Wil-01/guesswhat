@@ -45,6 +45,10 @@ body {
   letter-spacing: 0.3em;
 }
 
+.round {
+  color: #555;
+}
+
 .timer {
   font-variant-numeric: tabular-nums;
 }

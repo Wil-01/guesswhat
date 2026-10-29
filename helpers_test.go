@@ -24,6 +24,8 @@ type anyPacket struct {
 	Hint     string       `json:"hint"`
 	Winner   int          `json:"winner"`
 	Points   int          `json:"points"`
+	Round    int          `json:"round"`
+	Rounds   int          `json:"rounds"`
 }
 
 type testClient struct {
@@ -38,6 +40,8 @@ type testClient struct {
 func newTestServer(t *testing.T) (*Hub, *httptest.Server) {
 	t.Helper()
 	hub := newHub()
+	hub.rounds = 1
+	hub.pauseDuration = 10 * time.Millisecond
 	srv := httptest.NewServer(websocket.Handler(hub.handleWS))
 	t.Cleanup(srv.Close)
 	return hub, srv
@@ -99,23 +103,53 @@ func say(t *testing.T, ws *websocket.Conn, text string) {
 	send(t, ws, ChatPacket{Type: TypeMessage, Message: text})
 }
 
-// startGame starts the game as admin and returns each client's round packet.
-func startGame(t *testing.T, admin *testClient, all ...*testClient) map[*testClient]anyPacket {
+func setHub(hub *Hub, f func(h *Hub)) {
+	hub.mu.Lock()
+	defer hub.mu.Unlock()
+	f(hub)
+}
+
+type round struct {
+	drawer  *testClient
+	word    string
+	packets map[*testClient]anyPacket
+}
+
+// guesser returns any client that is not drawing.
+func (r round) guesser() *testClient {
+	for c := range r.packets {
+		if c != r.drawer {
+			return c
+		}
+	}
+	return nil
+}
+
+// startGame starts the game as admin and returns the first round.
+func startGame(t *testing.T, admin *testClient, all ...*testClient) round {
 	t.Helper()
 	send(t, admin.Conn, Envelope{Type: TypeStart})
-	rounds := make(map[*testClient]anyPacket)
 	for _, c := range all {
 		expect(t, c.Conn, TypeGame)
 		expect(t, c.Conn, TypeSystem)
-		rounds[c] = expectRound(t, c)
 	}
-	return rounds
+	return expectRound(t, all...)
 }
 
-func expectRound(t *testing.T, c *testClient) anyPacket {
+func expectRound(t *testing.T, all ...*testClient) round {
 	t.Helper()
-	expect(t, c.Conn, TypeClear)
-	p := expect(t, c.Conn, TypeRound)
-	expect(t, c.Conn, TypeSystem)
-	return p
+	r := round{packets: make(map[*testClient]anyPacket)}
+	for _, c := range all {
+		expect(t, c.Conn, TypeClear)
+		p := expect(t, c.Conn, TypeRound)
+		expect(t, c.Conn, TypeSystem)
+		r.packets[c] = p
+		if p.Drawer == c.id {
+			r.drawer, r.word = c, p.Word
+		}
+	}
+	if r.drawer == nil {
+		t.Fatalf("no drawer among clients: %+v", r.packets)
+	}
+	return r
 }

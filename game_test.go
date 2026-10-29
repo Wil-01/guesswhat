@@ -50,12 +50,12 @@ func TestStartRequiresPlayers(t *testing.T) {
 	}
 }
 
-func TestStart(t *testing.T) {
+func TestStartTwiceRejected(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-
 	startGame(t, alice, alice, bob)
+
 	send(t, alice.Conn, Envelope{Type: TypeStart})
 	if got := expect(t, alice.Conn, TypeError).Message; got != errAlreadyStarted.Error() {
 		t.Fatalf("got error %q", got)
@@ -66,17 +66,14 @@ func TestWordOnlySentToDrawer(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-	rounds := startGame(t, alice, alice, bob)
+	r := startGame(t, alice, alice, bob)
 
-	drawer, guesser := rounds[alice], rounds[bob]
-	if drawer.Drawer != alice.id || guesser.Drawer != alice.id {
-		t.Fatalf("got drawers %d and %d", drawer.Drawer, guesser.Drawer)
+	guess := r.packets[r.guesser()]
+	if r.word == "" || guess.Word != "" || guess.Drawer != r.drawer.id {
+		t.Fatalf("got drawer %+v and guesser %+v", r.packets[r.drawer], guess)
 	}
-	if drawer.Word == "" || guesser.Word != "" {
-		t.Fatalf("got words %q and %q", drawer.Word, guesser.Word)
-	}
-	if guesser.Hint != hint(drawer.Word) {
-		t.Fatalf("got hint %q for %q", guesser.Hint, drawer.Word)
+	if guess.Hint != hint(r.word) {
+		t.Fatalf("got hint %q for %q", guess.Hint, r.word)
 	}
 }
 
@@ -84,58 +81,44 @@ func TestOnlyDrawerCanDraw(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-	startGame(t, alice, alice, bob)
+	r := startGame(t, alice, alice, bob)
+	guesser := r.guesser()
 
-	send(t, bob.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
-	expect(t, bob.Conn, TypeError)
-	send(t, bob.Conn, Envelope{Type: TypeClear})
-	expect(t, bob.Conn, TypeError)
+	send(t, guesser.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
+	expect(t, guesser.Conn, TypeError)
+	send(t, guesser.Conn, Envelope{Type: TypeClear})
+	expect(t, guesser.Conn, TypeError)
 
-	send(t, alice.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
-	expect(t, bob.Conn, TypeDraw)
+	send(t, r.drawer.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
+	expect(t, guesser.Conn, TypeDraw)
 }
 
 func TestDrawerCannotRevealWord(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-	word := startGame(t, alice, alice, bob)[alice].Word
+	r := startGame(t, alice, alice, bob)
 
-	say(t, alice.Conn, "it is a "+strings.ToUpper(word))
-	expect(t, alice.Conn, TypeError)
-	say(t, alice.Conn, "hint: it is big")
-	expect(t, bob.Conn, TypeMessage)
+	say(t, r.drawer.Conn, "it is a "+strings.ToUpper(r.word))
+	expect(t, r.drawer.Conn, TypeError)
+	say(t, r.drawer.Conn, "hint: it is big")
+	expect(t, r.guesser().Conn, TypeMessage)
 }
 
 func TestLateJoinerGetsRound(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-	word := startGame(t, alice, alice, bob)[alice].Word
-	send(t, alice.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
-	expect(t, bob.Conn, TypeDraw)
+	r := startGame(t, alice, alice, bob)
+	send(t, r.drawer.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
+	expect(t, r.guesser().Conn, TypeDraw)
 
 	carol := connect(t, srv)
 	if len(carol.drawing) != 1 {
 		t.Fatalf("got drawing %+v", carol.drawing)
 	}
-	p := carol.round
-	if p.Word != "" || p.Hint != hint(word) || p.Drawer != alice.id {
+	if p := carol.round; p.Word != "" || p.Hint != hint(r.word) || p.Drawer != r.drawer.id {
 		t.Fatalf("got round %+v", p)
-	}
-}
-
-func TestDrawerLeavingStopsGame(t *testing.T) {
-	_, srv := newTestServer(t)
-	alice := connect(t, srv)
-	bob := connect(t, srv)
-	carol := connect(t, srv)
-	startGame(t, alice, alice, bob, carol)
-
-	alice.Close()
-	expect(t, bob.Conn, TypeSystem)
-	if got := expect(t, bob.Conn, TypeGame).State; got != StateWaiting {
-		t.Fatalf("got state %q", got)
 	}
 }
 
@@ -143,17 +126,18 @@ func TestCorrectGuessWins(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-	word := startGame(t, alice, alice, bob)[alice].Word
+	r := startGame(t, alice, alice, bob)
+	guesser := r.guesser()
 
-	say(t, bob.Conn, "  "+strings.ToUpper(normalize(word))+" ")
+	say(t, guesser.Conn, "  "+strings.ToUpper(normalize(r.word))+" ")
 	for _, c := range []*testClient{alice, bob} {
 		expect(t, c.Conn, TypeSystem)
 		end := expect(t, c.Conn, TypeRoundEnd)
-		if end.Word != word || end.Winner != bob.id || end.Points < minPoints {
+		if end.Word != r.word || end.Winner != guesser.id || end.Points < minPoints {
 			t.Fatalf("got round end %+v", end)
 		}
 		ranking := expect(t, c.Conn, TypeGameEnd).Players
-		if ranking[0].ID != bob.id || ranking[0].Score != end.Points || ranking[1].Score != 0 {
+		if ranking[0].ID != guesser.id || ranking[0].Score != end.Points || ranking[1].Score != 0 {
 			t.Fatalf("got ranking %+v", ranking)
 		}
 		if got := expect(t, c.Conn, TypeGame).State; got != StateWaiting {
@@ -166,19 +150,17 @@ func TestWrongGuessIsChat(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
-	startGame(t, alice, alice, bob)
+	r := startGame(t, alice, alice, bob)
 
-	say(t, bob.Conn, "definitely not the word 42")
-	if got := expect(t, alice.Conn, TypeMessage).Message; got != "definitely not the word 42" {
+	say(t, r.guesser().Conn, "definitely not the word 42")
+	if got := expect(t, r.drawer.Conn, TypeMessage).Message; got != "definitely not the word 42" {
 		t.Fatalf("got message %q", got)
 	}
 }
 
 func TestTimeUp(t *testing.T) {
 	hub, srv := newTestServer(t)
-	hub.mu.Lock()
-	hub.roundDuration = 100 * time.Millisecond
-	hub.mu.Unlock()
+	setHub(hub, func(h *Hub) { h.roundDuration = 100 * time.Millisecond })
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 	startGame(t, alice, alice, bob)
@@ -190,6 +172,76 @@ func TestTimeUp(t *testing.T) {
 		t.Fatalf("got round end %+v", end)
 	}
 	expect(t, bob.Conn, TypeGameEnd)
+}
+
+func TestRoundsRotateDrawer(t *testing.T) {
+	hub, srv := newTestServer(t)
+	setHub(hub, func(h *Hub) { h.rounds = 3 })
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	all := []*testClient{alice, bob}
+
+	r := startGame(t, alice, all...)
+	var previous *testClient
+	for i := 1; i <= 3; i++ {
+		p := r.packets[alice]
+		if p.Round != i || p.Rounds != 3 {
+			t.Fatalf("got round %d/%d, want %d/3", p.Round, p.Rounds, i)
+		}
+		if r.drawer == previous {
+			t.Fatalf("round %d: same drawer twice in a row", i)
+		}
+		previous = r.drawer
+		say(t, r.guesser().Conn, r.word)
+		for _, c := range all {
+			expect(t, c.Conn, TypeSystem)
+			expect(t, c.Conn, TypeRoundEnd)
+		}
+		if i < 3 {
+			r = expectRound(t, all...)
+		}
+	}
+	ranking := expect(t, alice.Conn, TypeGameEnd).Players
+	if ranking[0].Score+ranking[1].Score < 3*minPoints {
+		t.Fatalf("got ranking %+v", ranking)
+	}
+}
+
+func TestDrawerLeavingEndsRound(t *testing.T) {
+	hub, srv := newTestServer(t)
+	setHub(hub, func(h *Hub) { h.rounds = 2 })
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	carol := connect(t, srv)
+	r := startGame(t, alice, alice, bob, carol)
+
+	var rest []*testClient
+	for _, c := range []*testClient{alice, bob, carol} {
+		if c != r.drawer {
+			rest = append(rest, c)
+		}
+	}
+	r.drawer.Close()
+	for _, c := range rest {
+		if got := expect(t, c.Conn, TypeSystem).Message; got != "The drawer has left." {
+			t.Fatalf("got system %q", got)
+		}
+		expect(t, c.Conn, TypeRoundEnd)
+	}
+	expectRound(t, rest...)
+}
+
+func TestNotEnoughPlayersStopsGame(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	startGame(t, alice, alice, bob)
+
+	bob.Close()
+	expect(t, alice.Conn, TypeSystem)
+	if got := expect(t, alice.Conn, TypeGame).State; got != StateWaiting {
+		t.Fatalf("got state %q", got)
+	}
 }
 
 func TestPointsFor(t *testing.T) {

@@ -4,6 +4,7 @@ const startButton = document.getElementById("start");
 const wordBanner = document.getElementById("word");
 const toolbar = document.getElementById("toolbar");
 const timer = document.getElementById("timer");
+const roundLabel = document.getElementById("round");
 const results = document.getElementById("results");
 const ranking = document.getElementById("ranking");
 const rankTemplate = document.getElementById("rank-template");
@@ -21,6 +22,7 @@ function renderBoard() {
   toolbar.classList.toggle("disabled", !canDraw());
   canvas.style.cursor = canDraw() ? "crosshair" : "not-allowed";
   if (gameState !== "playing") {
+    roundLabel.hidden = true;
     wordBanner.hidden = true;
     timer.hidden = true;
     stopCountdown();
@@ -73,6 +75,8 @@ handlers.game = (p) => {
 
 handlers.round = (p) => {
   drawerId = p.drawer;
+  roundLabel.hidden = false;
+  roundLabel.textContent = `Manche ${p.round}/${p.rounds}`;
   wordBanner.hidden = false;
   wordBanner.textContent = p.word ? `Dessine : ${p.word}` : p.hint;
   startCountdown(p.remaining);
@@ -80,7 +84,11 @@ handlers.round = (p) => {
 };
 
 handlers.roundEnd = (p) => {
+  drawerId = 0;
   stopCountdown();
+  timer.hidden = true;
+  wordBanner.textContent = p.word;
+  renderBoard();
   addSystem(`The word was: ${p.word}`);
 };
 
