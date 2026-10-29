@@ -1,4 +1,8 @@
-const ws = new WebSocket(`ws://${location.host}/ws`);
+const roomCode = new URLSearchParams(location.search).get("code");
+if (!roomCode) location.replace("/");
+
+const protocol = location.protocol === "https:" ? "wss" : "ws";
+const ws = new WebSocket(`${protocol}://${location.host}/ws?room=${encodeURIComponent(roomCode)}`);
 const form = document.getElementById("form");
 const input = document.getElementById("input");
 const messages = document.getElementById("messages");
@@ -65,7 +69,20 @@ ws.addEventListener("open", () => {
   const saved = storedNickname();
   if (saved) send({ type: "nickname", nickname: saved });
 });
-ws.addEventListener("close", () => addSystem("Disconnected"));
+ws.addEventListener("close", () => {
+  addSystem("Disconnected");
+  document.getElementById("closed").hidden = false;
+});
+
+document.getElementById("room-code").textContent = roomCode;
+document.getElementById("copy-link").addEventListener("click", async (event) => {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    event.target.textContent = "Lien copié !";
+  } catch {
+    event.target.textContent = location.href;
+  }
+});
 ws.addEventListener("message", (event) => {
   const packet = JSON.parse(event.data);
   const handler = handlers[packet.type];

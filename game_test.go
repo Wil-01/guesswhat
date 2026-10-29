@@ -140,9 +140,7 @@ func TestCorrectGuessWins(t *testing.T) {
 		if ranking[0].ID != guesser.id || ranking[0].Score != end.Points || ranking[1].Score != 0 {
 			t.Fatalf("got ranking %+v", ranking)
 		}
-		if got := expect(t, c.Conn, TypeGame).State; got != StateWaiting {
-			t.Fatalf("got state %q", got)
-		}
+		expectClosed(t, c.Conn)
 	}
 }
 
@@ -159,8 +157,8 @@ func TestWrongGuessIsChat(t *testing.T) {
 }
 
 func TestTimeUp(t *testing.T) {
-	hub, srv := newTestServer(t)
-	setHub(hub, func(h *Hub) { h.roundDuration = 100 * time.Millisecond })
+	room, srv := newTestServer(t)
+	setRoom(room, func(r *Room) { r.roundDuration = 100 * time.Millisecond })
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 	startGame(t, alice, alice, bob)
@@ -175,8 +173,8 @@ func TestTimeUp(t *testing.T) {
 }
 
 func TestRoundsRotateDrawer(t *testing.T) {
-	hub, srv := newTestServer(t)
-	setHub(hub, func(h *Hub) { h.rounds = 3 })
+	room, srv := newTestServer(t)
+	setRoom(room, func(r *Room) { r.rounds = 3 })
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 	all := []*testClient{alice, bob}
@@ -208,8 +206,8 @@ func TestRoundsRotateDrawer(t *testing.T) {
 }
 
 func TestDrawerLeavingEndsRound(t *testing.T) {
-	hub, srv := newTestServer(t)
-	setHub(hub, func(h *Hub) { h.rounds = 2 })
+	room, srv := newTestServer(t)
+	setRoom(room, func(r *Room) { r.rounds = 2 })
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 	carol := connect(t, srv)

@@ -77,15 +77,15 @@ func TestUnknownTypeRejected(t *testing.T) {
 }
 
 func TestClientRemovedOnDisconnect(t *testing.T) {
-	hub, srv := newTestServer(t)
+	room, srv := newTestServer(t)
 	alice := connect(t, srv)
 	alice.Close()
 
 	deadline := time.Now().Add(time.Second)
 	for {
-		hub.mu.Lock()
-		n := len(hub.clients)
-		hub.mu.Unlock()
+		room.mu.Lock()
+		n := len(room.clients)
+		room.mu.Unlock()
 		if n == 0 {
 			return
 		}

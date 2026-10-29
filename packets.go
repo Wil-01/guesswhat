@@ -96,6 +96,12 @@ type GameEndPacket struct {
 	Players []PlayerInfo `json:"players"`
 }
 
+type RoomInfo struct {
+	Code    string `json:"code"`
+	Players int    `json:"players"`
+	State   string `json:"state"`
+}
+
 type GamePacket struct {
 	Type  string `json:"type"`
 	State string `json:"state"`
