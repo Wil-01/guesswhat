@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"fmt"
+	"math/rand/v2"
 	"slices"
 	"time"
 )
@@ -27,15 +28,30 @@ func (h *Hub) start(c *Client) error {
 		p.score = 0
 	}
 	h.state = StatePlaying
+	h.round = 0
 	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
 	h.broadcast(ChatPacket{Type: TypeSystem, Message: "The game has started!"})
-	h.startRound(h.admin)
+	h.startRound(nil)
 	return nil
 }
 
 // The helpers below must be called with h.mu held.
 
-func (h *Hub) startRound(drawer *Client) {
+func (h *Hub) roundActive() bool {
+	return h.state == StatePlaying && h.drawer != nil
+}
+
+func (h *Hub) pickDrawer(previous *Client) *Client {
+	candidates := slices.DeleteFunc(slices.Clone(h.clients), func(c *Client) bool { return c == previous })
+	if len(candidates) == 0 {
+		candidates = h.clients
+	}
+	return candidates[rand.IntN(len(candidates))]
+}
+
+func (h *Hub) startRound(previous *Client) {
+	drawer := h.pickDrawer(previous)
+	h.round++
 	h.drawer = drawer
 	h.word = randomWord()
 	h.roundID++
@@ -58,6 +74,8 @@ func (h *Hub) roundPacket(c *Client) RoundPacket {
 		Hint:      hint(h.word),
 		Duration:  h.roundDuration.Milliseconds(),
 		Remaining: max(time.Until(h.roundEndsAt), 0).Milliseconds(),
+		Round:     h.round,
+		Rounds:    h.rounds,
 	}
 	if c == h.drawer {
 		p.Word = h.word
@@ -79,7 +97,26 @@ func (h *Hub) endRound(winner *Client, points int) {
 		p.Winner = winner.id
 	}
 	h.broadcast(p)
-	h.endGame()
+
+	previous := h.drawer
+	h.drawer = nil
+	h.word = ""
+	h.broadcastPlayers()
+	if h.round >= h.rounds {
+		h.endGame()
+		return
+	}
+	id := h.roundID
+	h.timer = time.AfterFunc(h.pauseDuration, func() { h.nextRound(id, previous) })
+}
+
+func (h *Hub) nextRound(id int, previous *Client) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if id != h.roundID {
+		return
+	}
+	h.startRound(previous)
 }
 
 func (h *Hub) endGame() {
@@ -104,7 +141,7 @@ func (h *Hub) reset() {
 	h.word = ""
 }
 
-// stopTimer also invalidates a timeout that already fired and waits for the lock.
+// stopTimer also invalidates a callback that already fired and waits for the lock.
 func (h *Hub) stopTimer() {
 	h.roundID++
 	if h.timer != nil {

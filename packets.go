@@ -80,6 +80,8 @@ type RoundPacket struct {
 	Hint      string `json:"hint"`
 	Duration  int64  `json:"duration"`
 	Remaining int64  `json:"remaining"`
+	Round     int    `json:"round"`
+	Rounds    int    `json:"rounds"`
 }
 
 type RoundEndPacket struct {
