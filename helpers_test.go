@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -37,14 +38,14 @@ type testClient struct {
 	round    anyPacket
 }
 
-func newTestServer(t *testing.T) (*Hub, *httptest.Server) {
+func newTestServer(t *testing.T) (*Room, *httptest.Server) {
 	t.Helper()
-	hub := newHub()
-	hub.rounds = 1
-	hub.pauseDuration = 10 * time.Millisecond
-	srv := httptest.NewServer(websocket.Handler(hub.handleWS))
+	room := newRoom()
+	room.rounds = 1
+	room.pauseDuration = 10 * time.Millisecond
+	srv := httptest.NewServer(websocket.Handler(room.handleWS))
 	t.Cleanup(srv.Close)
-	return hub, srv
+	return room, srv
 }
 
 func next(t *testing.T, ws *websocket.Conn) anyPacket {
@@ -71,15 +72,43 @@ func expect(t *testing.T, ws *websocket.Conn, typ string) anyPacket {
 	}
 }
 
-// connect dials and consumes the welcome packets, so the client is registered on return.
-func connect(t *testing.T, srv *httptest.Server) *testClient {
+func expectClosed(t *testing.T, ws *websocket.Conn) {
 	t.Helper()
-	url := "ws" + strings.TrimPrefix(srv.URL, "http")
+	for {
+		ws.SetReadDeadline(time.Now().Add(2 * time.Second))
+		var p anyPacket
+		err := websocket.JSON.Receive(ws, &p)
+		if err == io.EOF {
+			return
+		}
+		if err != nil {
+			t.Fatalf("expected connection close, got %v", err)
+		}
+		if p.Type != TypePlayers {
+			t.Fatalf("expected connection close, got packet %+v", p)
+		}
+	}
+}
+
+func dial(t *testing.T, srv *httptest.Server, path string) *websocket.Conn {
+	t.Helper()
+	url := "ws" + strings.TrimPrefix(srv.URL, "http") + path
 	ws, err := websocket.Dial(url, "", srv.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { ws.Close() })
+	return ws
+}
+
+// connect dials and consumes the welcome packets, so the client is registered on return.
+func connect(t *testing.T, srv *httptest.Server) *testClient {
+	t.Helper()
+	return join(t, dial(t, srv, ""))
+}
+
+func join(t *testing.T, ws *websocket.Conn) *testClient {
+	t.Helper()
 	welcome := expect(t, ws, TypeNickname)
 	c := &testClient{Conn: ws, id: welcome.ID, nickname: welcome.Nickname}
 	c.history = expect(t, ws, TypeHistory).Messages
@@ -103,10 +132,10 @@ func say(t *testing.T, ws *websocket.Conn, text string) {
 	send(t, ws, ChatPacket{Type: TypeMessage, Message: text})
 }
 
-func setHub(hub *Hub, f func(h *Hub)) {
-	hub.mu.Lock()
-	defer hub.mu.Unlock()
-	f(hub)
+func setRoom(room *Room, f func(r *Room)) {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+	f(room)
 }
 
 type round struct {

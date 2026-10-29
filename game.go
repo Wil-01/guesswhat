@@ -13,151 +13,149 @@ const (
 	minPoints = 10
 )
 
-func (h *Hub) start(c *Client) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
+func (r *Room) start(c *Client) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	switch {
-	case c != h.admin:
+	case c != r.admin:
 		return errNotAdmin
-	case h.state != StateWaiting:
+	case r.state != StateWaiting:
 		return errAlreadyStarted
-	case len(h.clients) < minPlayers:
+	case len(r.clients) < minPlayers:
 		return errNotEnoughPlayers
 	}
-	for _, p := range h.clients {
+	for _, p := range r.clients {
 		p.score = 0
 	}
-	h.state = StatePlaying
-	h.round = 0
-	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: "The game has started!"})
-	h.startRound(nil)
+	r.state = StatePlaying
+	r.round = 0
+	r.broadcast(GamePacket{Type: TypeGame, State: r.state})
+	r.broadcast(ChatPacket{Type: TypeSystem, Message: "The game has started!"})
+	r.startRound(nil)
 	return nil
 }
 
-// The helpers below must be called with h.mu held.
+// The helpers below must be called with r.mu held.
 
-func (h *Hub) roundActive() bool {
-	return h.state == StatePlaying && h.drawer != nil
+func (r *Room) roundActive() bool {
+	return r.state == StatePlaying && r.drawer != nil
 }
 
-func (h *Hub) pickDrawer(previous *Client) *Client {
-	candidates := slices.DeleteFunc(slices.Clone(h.clients), func(c *Client) bool { return c == previous })
+func (r *Room) pickDrawer(previous *Client) *Client {
+	candidates := slices.DeleteFunc(slices.Clone(r.clients), func(c *Client) bool { return c == previous })
 	if len(candidates) == 0 {
-		candidates = h.clients
+		candidates = r.clients
 	}
 	return candidates[rand.IntN(len(candidates))]
 }
 
-func (h *Hub) startRound(previous *Client) {
-	drawer := h.pickDrawer(previous)
-	h.round++
-	h.drawer = drawer
-	h.word = randomWord()
-	h.roundID++
-	h.roundEndsAt = time.Now().Add(h.roundDuration)
-	id := h.roundID
-	h.timer = time.AfterFunc(h.roundDuration, func() { h.timeUp(id) })
+func (r *Room) startRound(previous *Client) {
+	drawer := r.pickDrawer(previous)
+	r.round++
+	r.drawer = drawer
+	r.word = randomWord()
+	r.roundID++
+	r.roundEndsAt = time.Now().Add(r.roundDuration)
+	id := r.roundID
+	r.timer = time.AfterFunc(r.roundDuration, func() { r.timeUp(id) })
 
-	h.clearDrawing()
-	for _, c := range h.clients {
-		h.send(c, h.roundPacket(c))
+	r.clearDrawing()
+	for _, c := range r.clients {
+		r.send(c, r.roundPacket(c))
 	}
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: fmt.Sprintf("%s is drawing.", drawer.nickname)})
-	h.broadcastPlayers()
+	r.broadcast(ChatPacket{Type: TypeSystem, Message: fmt.Sprintf("%s is drawing.", drawer.nickname)})
+	r.broadcastPlayers()
 }
 
-func (h *Hub) roundPacket(c *Client) RoundPacket {
+func (r *Room) roundPacket(c *Client) RoundPacket {
 	p := RoundPacket{
 		Type:      TypeRound,
-		Drawer:    h.drawer.id,
-		Hint:      hint(h.word),
-		Duration:  h.roundDuration.Milliseconds(),
-		Remaining: max(time.Until(h.roundEndsAt), 0).Milliseconds(),
-		Round:     h.round,
-		Rounds:    h.rounds,
+		Drawer:    r.drawer.id,
+		Hint:      hint(r.word),
+		Duration:  r.roundDuration.Milliseconds(),
+		Remaining: max(time.Until(r.roundEndsAt), 0).Milliseconds(),
+		Round:     r.round,
+		Rounds:    r.rounds,
 	}
-	if c == h.drawer {
-		p.Word = h.word
+	if c == r.drawer {
+		p.Word = r.word
 	}
 	return p
 }
 
-func (h *Hub) guessed(c *Client) {
-	points := pointsFor(time.Until(h.roundEndsAt), h.roundDuration)
+func (r *Room) guessed(c *Client) {
+	points := pointsFor(time.Until(r.roundEndsAt), r.roundDuration)
 	c.score += points
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: fmt.Sprintf("%s guessed the word! (+%d)", c.nickname, points)})
-	h.endRound(c, points)
+	r.broadcast(ChatPacket{Type: TypeSystem, Message: fmt.Sprintf("%s guessed the word! (+%d)", c.nickname, points)})
+	r.endRound(c, points)
 }
 
-func (h *Hub) endRound(winner *Client, points int) {
-	h.stopTimer()
-	p := RoundEndPacket{Type: TypeRoundEnd, Word: h.word, Points: points}
+func (r *Room) endRound(winner *Client, points int) {
+	r.stopTimer()
+	p := RoundEndPacket{Type: TypeRoundEnd, Word: r.word, Points: points}
 	if winner != nil {
 		p.Winner = winner.id
 	}
-	h.broadcast(p)
+	r.broadcast(p)
 
-	previous := h.drawer
-	h.drawer = nil
-	h.word = ""
-	h.broadcastPlayers()
-	if h.round >= h.rounds {
-		h.endGame()
+	previous := r.drawer
+	r.drawer = nil
+	r.word = ""
+	r.broadcastPlayers()
+	if r.round >= r.rounds {
+		r.endGame()
 		return
 	}
-	id := h.roundID
-	h.timer = time.AfterFunc(h.pauseDuration, func() { h.nextRound(id, previous) })
+	id := r.roundID
+	r.timer = time.AfterFunc(r.pauseDuration, func() { r.nextRound(id, previous) })
 }
 
-func (h *Hub) nextRound(id int, previous *Client) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if id != h.roundID {
+func (r *Room) nextRound(id int, previous *Client) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if id != r.roundID {
 		return
 	}
-	h.startRound(previous)
+	r.startRound(previous)
 }
 
-func (h *Hub) endGame() {
-	ranking := h.players()
+func (r *Room) endGame() {
+	ranking := r.players()
 	slices.SortStableFunc(ranking, func(a, b PlayerInfo) int { return cmp.Compare(b.Score, a.Score) })
-	h.reset()
-	h.broadcast(GameEndPacket{Type: TypeGameEnd, Players: ranking})
-	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
-	h.broadcastPlayers()
+	r.broadcast(GameEndPacket{Type: TypeGameEnd, Players: ranking})
+	r.close()
 }
 
-func (h *Hub) stopGame(reason string) {
-	h.stopTimer()
-	h.reset()
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: reason})
-	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
+func (r *Room) stopGame(reason string) {
+	r.stopTimer()
+	r.reset()
+	r.broadcast(ChatPacket{Type: TypeSystem, Message: reason})
+	r.broadcast(GamePacket{Type: TypeGame, State: r.state})
 }
 
-func (h *Hub) reset() {
-	h.state = StateWaiting
-	h.drawer = nil
-	h.word = ""
+func (r *Room) reset() {
+	r.state = StateWaiting
+	r.drawer = nil
+	r.word = ""
 }
 
 // stopTimer also invalidates a callback that already fired and waits for the lock.
-func (h *Hub) stopTimer() {
-	h.roundID++
-	if h.timer != nil {
-		h.timer.Stop()
-		h.timer = nil
+func (r *Room) stopTimer() {
+	r.roundID++
+	if r.timer != nil {
+		r.timer.Stop()
+		r.timer = nil
 	}
 }
 
-func (h *Hub) timeUp(id int) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	if id != h.roundID {
+func (r *Room) timeUp(id int) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if id != r.roundID {
 		return
 	}
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: "Time's up!"})
-	h.endRound(nil, 0)
+	r.broadcast(ChatPacket{Type: TypeSystem, Message: "Time's up!"})
+	r.endRound(nil, 0)
 }
 
 func pointsFor(remaining, total time.Duration) int {
