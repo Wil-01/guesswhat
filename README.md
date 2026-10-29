@@ -21,6 +21,11 @@ go test -race ./...
 The front is embedded in the binary (`go build` produces a standalone executable).
 On a fatal error the server writes to stderr and exits with code 84.
 
+## Deploy
+
+`render.yaml` is a [Render](https://render.com) blueprint: create a Blueprint from the repository, then set `ADMIN_PASSWORD` in the dashboard.
+On the free plan the disk is not persistent, so words edited from the admin page are reset on each deploy or restart.
+
 ## HTTP API
 
 | Method | Path | Body | Response |
