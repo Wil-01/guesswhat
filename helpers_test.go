@@ -22,6 +22,8 @@ type anyPacket struct {
 	Drawer   int          `json:"drawer"`
 	Word     string       `json:"word"`
 	Hint     string       `json:"hint"`
+	Winner   int          `json:"winner"`
+	Points   int          `json:"points"`
 }
 
 type testClient struct {

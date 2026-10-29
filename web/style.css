@@ -30,12 +30,23 @@ body {
   }
 }
 
+.round-info {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  gap: 1.5rem;
+  min-height: 2rem;
+  margin-bottom: 0.5rem;
+}
+
 .word {
-  text-align: center;
   font-size: 1.4rem;
   font-weight: bold;
   letter-spacing: 0.3em;
-  margin-bottom: 0.5rem;
+}
+
+.timer {
+  font-variant-numeric: tabular-nums;
 }
 
 .toolbar.disabled {
@@ -140,6 +151,33 @@ body {
 
 .player:nth-child(odd) {
   background: #f3f3f3;
+}
+
+.player .name {
+  flex: 1;
+}
+
+.player .score,
+#ranking .score {
+  font-variant-numeric: tabular-nums;
+  color: #555;
+}
+
+#results {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  min-width: 260px;
+}
+
+#ranking li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.2rem 0;
+}
+
+#ranking li:first-child {
+  font-weight: bold;
 }
 
 .player.me .name {

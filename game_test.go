@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestFirstClientIsAdmin(t *testing.T) {
@@ -135,5 +136,75 @@ func TestDrawerLeavingStopsGame(t *testing.T) {
 	expect(t, bob.Conn, TypeSystem)
 	if got := expect(t, bob.Conn, TypeGame).State; got != StateWaiting {
 		t.Fatalf("got state %q", got)
+	}
+}
+
+func TestCorrectGuessWins(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	word := startGame(t, alice, alice, bob)[alice].Word
+
+	say(t, bob.Conn, "  "+strings.ToUpper(normalize(word))+" ")
+	for _, c := range []*testClient{alice, bob} {
+		expect(t, c.Conn, TypeSystem)
+		end := expect(t, c.Conn, TypeRoundEnd)
+		if end.Word != word || end.Winner != bob.id || end.Points < minPoints {
+			t.Fatalf("got round end %+v", end)
+		}
+		ranking := expect(t, c.Conn, TypeGameEnd).Players
+		if ranking[0].ID != bob.id || ranking[0].Score != end.Points || ranking[1].Score != 0 {
+			t.Fatalf("got ranking %+v", ranking)
+		}
+		if got := expect(t, c.Conn, TypeGame).State; got != StateWaiting {
+			t.Fatalf("got state %q", got)
+		}
+	}
+}
+
+func TestWrongGuessIsChat(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	startGame(t, alice, alice, bob)
+
+	say(t, bob.Conn, "definitely not the word 42")
+	if got := expect(t, alice.Conn, TypeMessage).Message; got != "definitely not the word 42" {
+		t.Fatalf("got message %q", got)
+	}
+}
+
+func TestTimeUp(t *testing.T) {
+	hub, srv := newTestServer(t)
+	hub.mu.Lock()
+	hub.roundDuration = 100 * time.Millisecond
+	hub.mu.Unlock()
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	startGame(t, alice, alice, bob)
+
+	if got := expect(t, bob.Conn, TypeSystem).Message; got != "Time's up!" {
+		t.Fatalf("got system %q", got)
+	}
+	if end := expect(t, bob.Conn, TypeRoundEnd); end.Winner != 0 || end.Points != 0 {
+		t.Fatalf("got round end %+v", end)
+	}
+	expect(t, bob.Conn, TypeGameEnd)
+}
+
+func TestPointsFor(t *testing.T) {
+	cases := []struct {
+		remaining time.Duration
+		want      int
+	}{
+		{80 * time.Second, maxPoints},
+		{40 * time.Second, maxPoints / 2},
+		{time.Second, minPoints},
+		{0, minPoints},
+	}
+	for _, c := range cases {
+		if got := pointsFor(c.remaining, 80*time.Second); got != c.want {
+			t.Errorf("pointsFor(%v) = %d, want %d", c.remaining, got, c.want)
+		}
 	}
 }
