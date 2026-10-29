@@ -17,6 +17,7 @@ type Hub struct {
 	mu      sync.Mutex
 	clients map[*Client]bool
 	history []ChatPacket
+	drawing []Stroke
 	guests  int
 }
 
@@ -24,6 +25,7 @@ func newHub() *Hub {
 	return &Hub{
 		clients: make(map[*Client]bool),
 		history: []ChatPacket{},
+		drawing: []Stroke{},
 	}
 }
 
@@ -35,6 +37,7 @@ func (h *Hub) join(conn *websocket.Conn) *Client {
 	h.clients[c] = true
 	h.send(c, NicknamePacket{Type: TypeNickname, Nickname: c.nickname})
 	h.send(c, HistoryPacket{Type: TypeHistory, Messages: h.history})
+	h.send(c, DrawingPacket{Type: TypeDrawing, Strokes: h.drawing})
 	return c
 }
 
@@ -61,10 +64,31 @@ func (h *Hub) chat(c *Client, text string) {
 	h.broadcast(msg)
 }
 
+func (h *Hub) draw(from *Client, s Stroke) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.drawing = append(h.drawing, s)
+	h.broadcastExcept(from, DrawPacket{Type: TypeDraw, Stroke: s})
+}
+
+func (h *Hub) clear() {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.drawing = []Stroke{}
+	h.broadcast(Envelope{Type: TypeClear})
+}
+
 // Callers must hold h.mu.
 func (h *Hub) broadcast(v any) {
+	h.broadcastExcept(nil, v)
+}
+
+// Callers must hold h.mu.
+func (h *Hub) broadcastExcept(except *Client, v any) {
 	for c := range h.clients {
-		h.send(c, v)
+		if c != except {
+			h.send(c, v)
+		}
 	}
 }
 

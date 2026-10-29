@@ -13,13 +13,24 @@
     <input id="nickname" type="text" autocomplete="off" maxlength="20">
     <button type="submit">Changer</button>
   </form>
-  <section class="chat">
-    <ul id="messages"></ul>
-    <form id="form">
-      <input id="input" type="text" autocomplete="off" placeholder="Type your message...">
-      <button type="submit">Envoyer</button>
-    </form>
-  </section>
+  <main class="game">
+    <section class="board">
+      <div class="toolbar">
+        <input id="color" type="color" value="#000000" aria-label="Couleur">
+        <input id="size" type="range" min="1" max="50" value="4" aria-label="Épaisseur">
+        <button id="clear" type="button">Effacer</button>
+      </div>
+      <canvas id="canvas" width="800" height="600"></canvas>
+    </section>
+    <section class="chat">
+      <ul id="messages"></ul>
+      <form id="form">
+        <input id="input" type="text" autocomplete="off" placeholder="Type your message...">
+        <button type="submit">Envoyer</button>
+      </form>
+    </section>
+  </main>
   <script src="app.js"></script>
+  <script src="canvas.js"></script>
 </body>
 </html>
