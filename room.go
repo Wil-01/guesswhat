@@ -46,6 +46,7 @@ type Room struct {
 	code      string
 	private   bool
 	lobby     *Lobby
+	words     *WordStore
 	closed    bool
 	clients   []*Client
 	admin     *Client
@@ -70,8 +71,9 @@ type Room struct {
 	cleanup  *time.Timer
 }
 
-func newRoom() *Room {
+func newRoom(words *WordStore) *Room {
 	return &Room{
+		words:         words,
 		state:         StateWaiting,
 		history:       []ChatPacket{},
 		drawing:       []Stroke{},
@@ -227,7 +229,7 @@ func (r *Room) setSettings(c *Client, s Settings) error {
 	case r.state != StateWaiting:
 		return errAlreadyStarted
 	}
-	if err := s.validate(); err != nil {
+	if err := s.validate(r.words); err != nil {
 		return err
 	}
 	r.applySettings(s)
@@ -257,7 +259,7 @@ func (r *Room) settingsPacket() SettingsPacket {
 			Rounds:   r.rounds,
 			Duration: int(r.roundDuration / time.Second),
 		},
-		Themes: themeNames(),
+		Themes: r.words.Themes(),
 	}
 }
 

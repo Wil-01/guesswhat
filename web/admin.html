@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GuessWhat · Administration</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin">
+  <header class="room-header">
+    <h1><a href="/">GuessWhat</a></h1>
+    <span>Administration des mots</span>
+  </header>
+
+  <p id="status" class="status" hidden></p>
+
+  <form id="login" class="card">
+    <label for="password">Mot de passe administrateur</label>
+    <div class="row">
+      <input id="password" type="password" autocomplete="current-password" required>
+      <button type="submit">Se connecter</button>
+    </div>
+  </form>
+
+  <div id="panel" hidden>
+    <form id="create-theme" class="card">
+      <h2>Nouveau thème</h2>
+      <label for="theme-name">Nom (minuscules, chiffres, tirets)</label>
+      <input id="theme-name" type="text" autocomplete="off" pattern="[a-z0-9\-]{1,30}" required>
+      <label for="theme-words">Mots, séparés par des virgules</label>
+      <input id="theme-words" type="text" autocomplete="off" required>
+      <div class="row">
+        <span></span>
+        <button type="submit">Créer</button>
+      </div>
+    </form>
+
+    <div class="row">
+      <input id="filter" type="search" placeholder="Filtrer les mots..." autocomplete="off">
+      <button id="logout" type="button">Se déconnecter</button>
+    </div>
+    <div id="themes"></div>
+  </div>
+
+  <template id="theme-template">
+    <section class="card theme">
+      <div class="row">
+        <h2><span class="theme-name"></span> <small class="count"></small></h2>
+        <button type="button" class="delete-theme danger">Supprimer le thème</button>
+      </div>
+      <ul class="chips"></ul>
+      <form class="row add-word">
+        <input type="text" autocomplete="off" placeholder="Nouveau mot" maxlength="30" required>
+        <button type="submit">Ajouter</button>
+      </form>
+    </section>
+  </template>
+
+  <template id="chip-template">
+    <li class="chip">
+      <span class="word"></span>
+      <button type="button" class="remove" aria-label="Supprimer">✕</button>
+    </li>
+  </template>
+
+  <script src="admin.js"></script>
+</body>
+</html>

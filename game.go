@@ -53,7 +53,7 @@ func (r *Room) startRound(previous *Client) {
 	drawer := r.pickDrawer(previous)
 	r.round++
 	r.drawer = drawer
-	r.word, r.wordTheme = randomWord(r.theme)
+	r.word, r.wordTheme = r.words.Random(r.theme)
 	r.roundID++
 	r.roundEndsAt = time.Now().Add(r.roundDuration)
 	id := r.roundID

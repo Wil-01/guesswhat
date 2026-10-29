@@ -28,9 +28,9 @@ func defaultSettings() Settings {
 	return Settings{Rounds: defaultRounds, Duration: int(defaultRoundDuration / time.Second)}
 }
 
-func (s Settings) validate() error {
+func (s Settings) validate(words *WordStore) error {
 	switch {
-	case !validTheme(s.Theme):
+	case !words.Valid(s.Theme):
 		return fmt.Errorf("%w %q", errUnknownTheme, s.Theme)
 	case s.Rounds < minRounds || s.Rounds > maxRounds:
 		return errInvalidRounds
