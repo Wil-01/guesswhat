@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GuessWhat</title>
   <link rel="stylesheet" href="style.css">
+  <script src="theme.js"></script>
 </head>
 <body>
   <header class="room-header">
-    <h1><a href="/">GuessWhat</a></h1>
-    <div class="room-code">
-      Room <strong id="room-code"></strong>
-      <button id="copy-link" type="button">Copier le lien</button>
+    <h1><a href="/" class="logo-mark">GuessWhat</a></h1>
+    <div class="header-actions">
+      <div class="room-code">
+        Room <strong id="room-code"></strong>
+        <button id="copy-link" type="button">Copier le lien</button>
+      </div>
+      <button id="theme-toggle" class="icon-button" type="button"></button>
     </div>
   </header>
   <p id="closed" class="closed" hidden>
