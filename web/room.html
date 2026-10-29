@@ -53,6 +53,7 @@
             <option value="180">180 s</option>
           </select>
         </label>
+        <label class="check"><input id="teams" type="checkbox" disabled> Équipe contre équipe</label>
       </div>
       <button id="start" type="button" hidden>Start</button>
     </aside>
@@ -89,6 +90,7 @@
 
   <dialog id="results">
     <h2>Résultats</h2>
+    <p id="team-result" class="team-result" hidden></p>
     <ol id="ranking"></ol>
     <a class="button" href="/">Retour au lobby</a>
   </dialog>
@@ -99,6 +101,14 @@
       <span class="name"></span>
       <span class="badges"></span>
       <span class="score"></span>
+    </li>
+  </template>
+
+  <template id="team-template">
+    <li class="team-header">
+      <span class="team-name"></span>
+      <span class="team-score"></span>
+      <button type="button" class="join-team">Rejoindre</button>
     </li>
   </template>
 

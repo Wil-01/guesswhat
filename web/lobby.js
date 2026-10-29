@@ -1,5 +1,6 @@
 const nicknameInput = document.getElementById("nickname");
 const privateInput = document.getElementById("private");
+const teamsInput = document.getElementById("teams");
 const themeSelect = document.getElementById("theme");
 const roundsInput = document.getElementById("rounds");
 const durationSelect = document.getElementById("duration");
@@ -42,6 +43,7 @@ createButton.addEventListener("click", async () => {
         theme: themeSelect.value,
         rounds: Number(roundsInput.value),
         duration: Number(durationSelect.value),
+        teams: teamsInput.checked,
       }),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -79,7 +81,8 @@ function renderRooms(rooms) {
       link.querySelector(".code").textContent = room.code;
       const state = room.state === "playing" ? "en jeu" : "en attente";
       const theme = room.theme ? themeLabel(room.theme) : "Tous les thèmes";
-      link.querySelector(".meta").textContent = `${theme} · ${room.players}/${MAX_PLAYERS} joueurs · ${state}`;
+      const mode = room.teams ? " · équipes" : "";
+      link.querySelector(".meta").textContent = `${theme}${mode} · ${room.players}/${MAX_PLAYERS} joueurs · ${state}`;
       return li;
     })
   );

@@ -87,6 +87,12 @@ func (r *Room) handlePacket(c *Client, raw json.RawMessage) error {
 			return err
 		}
 		return r.setAvatar(c, p.Avatar)
+	case TypeTeam:
+		var p TeamPacket
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return err
+		}
+		return r.setTeam(c, p.Team)
 	case TypeSettings:
 		var p SettingsPacket
 		if err := json.Unmarshal(raw, &p); err != nil {

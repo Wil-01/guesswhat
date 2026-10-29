@@ -9,12 +9,17 @@ const roundTheme = document.getElementById("round-theme");
 const themeSelect = document.getElementById("theme");
 const roundsInput = document.getElementById("rounds");
 const durationSelect = document.getElementById("duration");
-const settingsInputs = [themeSelect, roundsInput, durationSelect];
+const teamsInput = document.getElementById("teams");
+const settingsInputs = [themeSelect, roundsInput, durationSelect, teamsInput];
+const teamTemplate = document.getElementById("team-template");
+const teamResult = document.getElementById("team-result");
+const TEAM_NAMES = ["", "Équipe rouge", "Équipe bleue"];
 const results = document.getElementById("results");
 const ranking = document.getElementById("ranking");
 const rankTemplate = document.getElementById("rank-template");
 
 let players = [];
+let teamScores = [];
 let gameState = "waiting";
 let drawerId = 0;
 let countdown = null;
@@ -53,19 +58,42 @@ function stopCountdown() {
   countdown = null;
 }
 
-function renderPlayers() {
-  playersList.replaceChildren(
-    ...players.map((player) => {
-      const li = playerTemplate.content.firstElementChild.cloneNode(true);
-      li.classList.toggle("me", player.id === myId);
-      li.querySelector(".avatar-slot").replaceChildren(avatarSVG(player.avatar, 32));
-      li.querySelector(".name").textContent = player.nickname + (player.id === myId ? " (you)" : "");
-      li.querySelector(".badges").textContent = (player.drawer ? "✏️" : "") + (player.admin ? "👑" : "");
-      li.querySelector(".score").textContent = player.score;
-      return li;
-    })
-  );
+function playerItem(player) {
+  const li = playerTemplate.content.firstElementChild.cloneNode(true);
+  li.classList.toggle("me", player.id === myId);
+  if (player.team) li.classList.add(`team-${player.team}`);
+  li.querySelector(".avatar-slot").replaceChildren(avatarSVG(player.avatar, 32));
+  li.querySelector(".name").textContent = player.nickname + (player.id === myId ? " (you)" : "");
+  li.querySelector(".badges").textContent = (player.drawer ? "✏️" : "") + (player.admin ? "👑" : "");
+  li.querySelector(".score").textContent = player.score;
+  return li;
+}
+
+function teamItem(team, me) {
+  const li = teamTemplate.content.firstElementChild.cloneNode(true);
+  li.classList.add(`team-${team}`);
+  li.querySelector(".team-name").textContent = TEAM_NAMES[team];
+  li.querySelector(".team-score").textContent = `${teamScores[team - 1] || 0} pts`;
+  const button = li.querySelector(".join-team");
+  button.hidden = gameState !== "waiting" || !me || me.team === team;
+  button.addEventListener("click", () => send({ type: "team", team }));
+  return li;
+}
+
+function myTeam() {
   const me = players.find((player) => player.id === myId);
+  return me ? me.team : 0;
+}
+
+function renderPlayers() {
+  const me = players.find((player) => player.id === myId);
+  if (players.some((player) => player.team)) {
+    playersList.replaceChildren(
+      ...[1, 2].flatMap((team) => [teamItem(team, me), ...players.filter((player) => player.team === team).map(playerItem)])
+    );
+  } else {
+    playersList.replaceChildren(...players.map(playerItem));
+  }
   const canManage = Boolean(me && me.admin && gameState === "waiting");
   startButton.hidden = !canManage;
   settingsInputs.forEach((input) => (input.disabled = !canManage));
@@ -82,6 +110,7 @@ const avatarEditor = createAvatarEditor(document.getElementById("avatar-editor")
 
 handlers.players = (p) => {
   players = p.players;
+  teamScores = p.teams || [];
   const me = players.find((player) => player.id === myId);
   if (me && !loadAvatar()) {
     saveAvatar(me.avatar);
@@ -100,6 +129,9 @@ handlers.round = (p) => {
   drawerId = p.drawer;
   roundLabel.hidden = false;
   roundLabel.textContent = `Manche ${p.round}/${p.rounds}`;
+  if (p.team) {
+    roundLabel.textContent += ` · ${TEAM_NAMES[p.team]}` + (p.team === myTeam() ? "" : " (vous ne pouvez pas deviner)");
+  }
   roundTheme.hidden = false;
   roundTheme.textContent = `Thème : ${themeLabel(p.theme)}`;
   wordBanner.hidden = false;
@@ -124,9 +156,16 @@ handlers.gameEnd = (p) => {
       li.querySelector(".avatar-slot").replaceChildren(avatarSVG(player.avatar, 28));
       li.querySelector(".name").textContent = player.nickname;
       li.querySelector(".score").textContent = `${player.score} pts`;
+      if (player.team) li.classList.add(`team-${player.team}`);
       return li;
     })
   );
+  teamResult.hidden = !p.teams;
+  if (p.teams) {
+    const [red, blue] = p.teams;
+    const winner = red === blue ? "Égalité" : `Victoire de l'${TEAM_NAMES[red > blue ? 1 : 2].toLowerCase()}`;
+    teamResult.textContent = `${winner} (${red} – ${blue})`;
+  }
   results.showModal();
 };
 
@@ -139,13 +178,14 @@ function renderSettings() {
     durationSelect.append(new Option(`${settings.duration} s`, settings.duration));
   }
   durationSelect.value = settings.duration;
+  teamsInput.checked = settings.teams;
 }
 
 handlers.settings = (p) => {
   if (p.themes && themeSelect.options.length !== p.themes.length + 1) {
     themeSelect.append(...p.themes.map((theme) => new Option(themeLabel(theme), theme)));
   }
-  settings = { theme: p.theme, rounds: p.rounds, duration: p.duration };
+  settings = { theme: p.theme, rounds: p.rounds, duration: p.duration, teams: p.teams };
   renderSettings();
 };
 
@@ -160,6 +200,7 @@ function sendSettings() {
     theme: themeSelect.value,
     rounds,
     duration: Number(durationSelect.value),
+    teams: teamsInput.checked,
   });
 }
 
