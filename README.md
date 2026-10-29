@@ -19,7 +19,7 @@ On a fatal error the server writes to stderr and exits with code 84.
 | Method | Path | Body | Response |
 |---|---|---|---|
 | `GET` | `/api/rooms` | | `[{code, players, state, theme}]` public rooms |
-| `POST` | `/api/rooms` | `{private, theme}` | `201 {code}` |
+| `POST` | `/api/rooms` | `{private, theme, rounds, duration}`, all optional | `201 {code}` |
 | `GET` | `/api/themes` | | `["animaux", ...]` |
 | `GET` | `/ws?room=CODE` | | websocket |
 
@@ -37,7 +37,7 @@ Client to server:
 | `undo` | removes the last action |
 | `clear` | |
 | `start` | admin only |
-| `theme` | `theme`, admin only before the game, empty for all themes |
+| `settings` | `theme` (empty for all), `rounds` (1-10), `duration` (30-180 s), admin only before the game |
 
 Server to client:
 
@@ -48,7 +48,7 @@ Server to client:
 | `drawing` | `strokes`, full redraw (on join and after an undo) |
 | `players` | `players: [{id, nickname, admin, drawer, score}]` |
 | `game` | `state`: `waiting` or `playing` |
-| `theme` | `theme`, `themes` |
+| `settings` | `theme`, `rounds`, `duration` (s), `themes` |
 | `round` | `drawer`, `word` (drawer only), `hint`, `theme`, `duration`, `remaining` (ms), `round`, `rounds` |
 | `roundEnd` | `word`, `winner`, `points` |
 | `gameEnd` | `players` ranking, then the room is closed |
@@ -68,7 +68,7 @@ A stroke is one drawing operation, coordinates are in `[0, 1]`:
 ## Rules
 
 - The first player in a room is its admin and can start the game (2 to 10 players).
-- A game has 3 rounds of 80 seconds; the drawer is drawn at random each round.
+- A game has 3 rounds of 80 seconds by default, the admin can change it before starting; the drawer is drawn at random each round.
 - Points: 100 scaled by the remaining time, 10 minimum.
 - Empty rooms are removed after one minute.
 - Words live in `words/<theme>.txt`, one per line: adding a file adds a theme.

@@ -36,10 +36,10 @@ func newLobby() *Lobby {
 	return &Lobby{rooms: make(map[string]*Room), emptyTTL: defaultEmptyTTL}
 }
 
-func (l *Lobby) create(private bool, theme string) *Room {
+func (l *Lobby) create(private bool, s Settings) *Room {
 	room := newRoom()
 	room.private = private
-	room.theme = theme
+	room.applySettings(s)
 	room.lobby = l
 
 	l.mu.Lock()
@@ -104,19 +104,19 @@ func (l *Lobby) handleList(w http.ResponseWriter, req *http.Request) {
 }
 
 func (l *Lobby) handleCreate(w http.ResponseWriter, req *http.Request) {
-	var body struct {
-		Private bool   `json:"private"`
-		Theme   string `json:"theme"`
-	}
+	body := struct {
+		Private bool `json:"private"`
+		Settings
+	}{Settings: defaultSettings()}
 	if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, 1024)).Decode(&body); err != nil && err != io.EOF {
 		http.Error(w, "invalid body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if !validTheme(body.Theme) {
-		http.Error(w, fmt.Sprintf("%v %q", errUnknownTheme, body.Theme), http.StatusBadRequest)
+	if err := body.Settings.validate(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	room := l.create(body.Private, body.Theme)
+	room := l.create(body.Private, body.Settings)
 	writeJSON(w, http.StatusCreated, map[string]string{"code": room.code})
 }
 

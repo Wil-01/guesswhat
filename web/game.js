@@ -7,6 +7,9 @@ const timer = document.getElementById("timer");
 const roundLabel = document.getElementById("round");
 const roundTheme = document.getElementById("round-theme");
 const themeSelect = document.getElementById("theme");
+const roundsInput = document.getElementById("rounds");
+const durationSelect = document.getElementById("duration");
+const settingsInputs = [themeSelect, roundsInput, durationSelect];
 const results = document.getElementById("results");
 const ranking = document.getElementById("ranking");
 const rankTemplate = document.getElementById("rank-template");
@@ -64,7 +67,7 @@ function renderPlayers() {
   const me = players.find((player) => player.id === myId);
   const canManage = Boolean(me && me.admin && gameState === "waiting");
   startButton.hidden = !canManage;
-  themeSelect.disabled = !canManage;
+  settingsInputs.forEach((input) => (input.disabled = !canManage));
 }
 
 function themeLabel(theme) {
@@ -115,12 +118,38 @@ handlers.gameEnd = (p) => {
   results.showModal();
 };
 
-handlers.theme = (p) => {
+let settings = null;
+
+function renderSettings() {
+  themeSelect.value = settings.theme;
+  roundsInput.value = settings.rounds;
+  if (![...durationSelect.options].some((option) => Number(option.value) === settings.duration)) {
+    durationSelect.append(new Option(`${settings.duration} s`, settings.duration));
+  }
+  durationSelect.value = settings.duration;
+}
+
+handlers.settings = (p) => {
   if (p.themes && themeSelect.options.length !== p.themes.length + 1) {
     themeSelect.append(...p.themes.map((theme) => new Option(themeLabel(theme), theme)));
   }
-  themeSelect.value = p.theme;
+  settings = { theme: p.theme, rounds: p.rounds, duration: p.duration };
+  renderSettings();
 };
 
-themeSelect.addEventListener("change", () => send({ type: "theme", theme: themeSelect.value }));
+function sendSettings() {
+  const rounds = Number(roundsInput.value);
+  if (!Number.isInteger(rounds) || rounds < 1 || rounds > 10) {
+    if (settings) renderSettings();
+    return;
+  }
+  send({
+    type: "settings",
+    theme: themeSelect.value,
+    rounds,
+    duration: Number(durationSelect.value),
+  });
+}
+
+settingsInputs.forEach((input) => input.addEventListener("change", sendSettings));
 startButton.addEventListener("click", () => send({ type: "start" }));

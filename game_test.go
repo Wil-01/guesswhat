@@ -262,29 +262,33 @@ func TestPointsFor(t *testing.T) {
 	}
 }
 
-func TestThemesSentOnJoin(t *testing.T) {
+func settingsPacket(theme string, rounds, duration int) SettingsPacket {
+	return SettingsPacket{Type: TypeSettings, Settings: Settings{Theme: theme, Rounds: rounds, Duration: duration}}
+}
+
+func TestSettingsSentOnJoin(t *testing.T) {
 	_, srv := newTestServer(t)
-	alice := connect(t, srv)
-	if alice.theme.Theme != "" || !slices.Equal(alice.theme.Themes, themeNames()) {
-		t.Fatalf("got theme packet %+v", alice.theme)
+	p := connect(t, srv).settings
+	if p.Theme != "" || p.Rounds != 1 || p.Duration != 80 || !slices.Equal(p.Themes, themeNames()) {
+		t.Fatalf("got settings packet %+v", p)
 	}
 }
 
-func TestSetTheme(t *testing.T) {
+func TestSetSettings(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 
-	send(t, alice.Conn, ThemePacket{Type: TypeTheme, Theme: "animaux"})
+	send(t, alice.Conn, settingsPacket("animaux", 2, 30))
 	for _, c := range []*testClient{alice, bob} {
-		if got := expect(t, c.Conn, TypeTheme).Theme; got != "animaux" {
-			t.Fatalf("got theme %q", got)
+		if p := expect(t, c.Conn, TypeSettings); p.Theme != "animaux" || p.Rounds != 2 || p.Duration != 30 {
+			t.Fatalf("got settings %+v", p)
 		}
 	}
 	r := startGame(t, alice, alice, bob)
 	for c, p := range r.packets {
-		if p.Theme != "animaux" {
-			t.Fatalf("client %d got round theme %q", c.id, p.Theme)
+		if p.Theme != "animaux" || p.Rounds != 2 || p.Duration != 30_000 {
+			t.Fatalf("client %d got round %+v", c.id, p)
 		}
 	}
 	if !slices.Contains(themes["animaux"], r.word) {
@@ -304,21 +308,29 @@ func TestMixedThemeTellsWordTheme(t *testing.T) {
 	}
 }
 
-func TestSetThemeRejected(t *testing.T) {
+func TestSetSettingsRejected(t *testing.T) {
 	_, srv := newTestServer(t)
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 
-	send(t, bob.Conn, ThemePacket{Type: TypeTheme, Theme: "animaux"})
+	send(t, bob.Conn, settingsPacket("animaux", 3, 80))
 	if got := expect(t, bob.Conn, TypeError).Message; got != errNotAdmin.Error() {
 		t.Fatalf("got error %q", got)
 	}
-	send(t, alice.Conn, ThemePacket{Type: TypeTheme, Theme: "nope"})
+	send(t, alice.Conn, settingsPacket("nope", 3, 80))
 	if got := expect(t, alice.Conn, TypeError).Message; !strings.HasPrefix(got, errUnknownTheme.Error()) {
 		t.Fatalf("got error %q", got)
 	}
+	send(t, alice.Conn, settingsPacket("", 0, 80))
+	if got := expect(t, alice.Conn, TypeError).Message; got != errInvalidRounds.Error() {
+		t.Fatalf("got error %q", got)
+	}
+	send(t, alice.Conn, settingsPacket("", 3, 500))
+	if got := expect(t, alice.Conn, TypeError).Message; got != errInvalidDuration.Error() {
+		t.Fatalf("got error %q", got)
+	}
 	startGame(t, alice, alice, bob)
-	send(t, alice.Conn, ThemePacket{Type: TypeTheme, Theme: "animaux"})
+	send(t, alice.Conn, settingsPacket("animaux", 3, 80))
 	if got := expect(t, alice.Conn, TypeError).Message; got != errAlreadyStarted.Error() {
 		t.Fatalf("got error %q", got)
 	}

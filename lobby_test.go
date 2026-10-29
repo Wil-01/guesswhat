@@ -189,17 +189,40 @@ func TestCreateThemedRoom(t *testing.T) {
 	if rooms := listRooms(t, srv); rooms[0].Theme != "nature" {
 		t.Fatalf("got rooms %+v", rooms)
 	}
-	if got := joinRoom(t, srv, code).theme.Theme; got != "nature" {
+	if got := joinRoom(t, srv, code).settings.Theme; got != "nature" {
 		t.Fatalf("got theme %q", got)
 	}
 }
 
-func TestCreateRoomUnknownTheme(t *testing.T) {
+func TestCreateRoomInvalidSettings(t *testing.T) {
 	_, srv := newLobbyServer(t)
-	res := postRoom(t, srv, map[string]any{"theme": "nope"})
-	res.Body.Close()
-	if res.StatusCode != http.StatusBadRequest {
-		t.Fatalf("got status %d", res.StatusCode)
+	for _, body := range []map[string]any{
+		{"theme": "nope"},
+		{"rounds": 11},
+		{"duration": 10},
+	} {
+		res := postRoom(t, srv, body)
+		res.Body.Close()
+		if res.StatusCode != http.StatusBadRequest {
+			t.Fatalf("%v: got status %d", body, res.StatusCode)
+		}
+	}
+}
+
+func TestCreateRoomWithSettings(t *testing.T) {
+	lobby, srv := newLobbyServer(t)
+	lobby.mu.Lock()
+	lobby.setup = nil
+	lobby.mu.Unlock()
+	res := postRoom(t, srv, map[string]any{"rounds": 5, "duration": 120})
+	defer res.Body.Close()
+	var out struct{ Code string }
+	if err := json.NewDecoder(res.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	p := joinRoom(t, srv, out.Code).settings
+	if p.Rounds != 5 || p.Duration != 120 || p.Theme != "" {
+		t.Fatalf("got settings %+v", p)
 	}
 }
 
