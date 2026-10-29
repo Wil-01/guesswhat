@@ -5,6 +5,8 @@ const wordBanner = document.getElementById("word");
 const toolbar = document.getElementById("toolbar");
 const timer = document.getElementById("timer");
 const roundLabel = document.getElementById("round");
+const roundTheme = document.getElementById("round-theme");
+const themeSelect = document.getElementById("theme");
 const results = document.getElementById("results");
 const ranking = document.getElementById("ranking");
 const rankTemplate = document.getElementById("rank-template");
@@ -23,6 +25,7 @@ function renderBoard() {
   canvas.style.cursor = canDraw() ? "crosshair" : "not-allowed";
   if (gameState !== "playing") {
     roundLabel.hidden = true;
+    roundTheme.hidden = true;
     wordBanner.hidden = true;
     timer.hidden = true;
     stopCountdown();
@@ -59,7 +62,13 @@ function renderPlayers() {
     })
   );
   const me = players.find((player) => player.id === myId);
-  startButton.hidden = !(me && me.admin && gameState === "waiting");
+  const canManage = Boolean(me && me.admin && gameState === "waiting");
+  startButton.hidden = !canManage;
+  themeSelect.disabled = !canManage;
+}
+
+function themeLabel(theme) {
+  return theme.charAt(0).toUpperCase() + theme.slice(1);
 }
 
 handlers.players = (p) => {
@@ -77,6 +86,8 @@ handlers.round = (p) => {
   drawerId = p.drawer;
   roundLabel.hidden = false;
   roundLabel.textContent = `Manche ${p.round}/${p.rounds}`;
+  roundTheme.hidden = false;
+  roundTheme.textContent = `Thème : ${themeLabel(p.theme)}`;
   wordBanner.hidden = false;
   wordBanner.textContent = p.word ? `Dessine : ${p.word}` : p.hint;
   startCountdown(p.remaining);
@@ -104,4 +115,12 @@ handlers.gameEnd = (p) => {
   results.showModal();
 };
 
+handlers.theme = (p) => {
+  if (p.themes && themeSelect.options.length !== p.themes.length + 1) {
+    themeSelect.append(...p.themes.map((theme) => new Option(themeLabel(theme), theme)));
+  }
+  themeSelect.value = p.theme;
+};
+
+themeSelect.addEventListener("change", () => send({ type: "theme", theme: themeSelect.value }));
 startButton.addEventListener("click", () => send({ type: "start" }));

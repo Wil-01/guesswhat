@@ -15,6 +15,7 @@ const (
 	TypeRound    = "round"
 	TypeRoundEnd = "roundEnd"
 	TypeGameEnd  = "gameEnd"
+	TypeTheme    = "theme"
 )
 
 type Envelope struct {
@@ -82,6 +83,13 @@ type RoundPacket struct {
 	Remaining int64  `json:"remaining"`
 	Round     int    `json:"round"`
 	Rounds    int    `json:"rounds"`
+	Theme     string `json:"theme"`
+}
+
+type ThemePacket struct {
+	Type   string   `json:"type"`
+	Theme  string   `json:"theme"`
+	Themes []string `json:"themes,omitempty"`
 }
 
 type RoundEndPacket struct {
@@ -100,6 +108,7 @@ type RoomInfo struct {
 	Code    string `json:"code"`
 	Players int    `json:"players"`
 	State   string `json:"state"`
+	Theme   string `json:"theme"`
 }
 
 type GamePacket struct {

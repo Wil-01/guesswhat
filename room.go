@@ -25,7 +25,7 @@ const (
 )
 
 var (
-	errNotAdmin         = errors.New("only the admin can start the game")
+	errNotAdmin         = errors.New("only the admin can do that")
 	errAlreadyStarted   = errors.New("the game has already started")
 	errNotEnoughPlayers = fmt.Errorf("at least %d players are needed", minPlayers)
 	errNotDrawer        = errors.New("only the drawer can draw")
@@ -42,19 +42,21 @@ type Client struct {
 }
 
 type Room struct {
-	mu      sync.Mutex
-	code    string
-	private bool
-	lobby   *Lobby
-	closed  bool
-	clients []*Client
-	admin   *Client
-	drawer  *Client
-	word    string
-	state   string
-	history []ChatPacket
-	drawing []Stroke
-	nextID  int
+	mu        sync.Mutex
+	code      string
+	private   bool
+	lobby     *Lobby
+	closed    bool
+	clients   []*Client
+	admin     *Client
+	drawer    *Client
+	word      string
+	theme     string
+	wordTheme string
+	state     string
+	history   []ChatPacket
+	drawing   []Stroke
+	nextID    int
 
 	rounds        int
 	round         int
@@ -83,7 +85,7 @@ func newRoom() *Room {
 func (r *Room) info() RoomInfo {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	return RoomInfo{Code: r.code, Players: len(r.clients), State: r.state}
+	return RoomInfo{Code: r.code, Players: len(r.clients), State: r.state, Theme: r.theme}
 }
 
 func (r *Room) join(conn *websocket.Conn) (*Client, error) {
@@ -108,6 +110,7 @@ func (r *Room) join(conn *websocket.Conn) (*Client, error) {
 	r.send(c, NicknamePacket{Type: TypeNickname, ID: c.id, Nickname: c.nickname})
 	r.send(c, HistoryPacket{Type: TypeHistory, Messages: r.history})
 	r.send(c, DrawingPacket{Type: TypeDrawing, Strokes: r.drawing})
+	r.send(c, r.themePacket())
 	r.send(c, GamePacket{Type: TypeGame, State: r.state})
 	if r.roundActive() {
 		r.send(c, r.roundPacket(c))
@@ -194,6 +197,22 @@ func (r *Room) clear(c *Client) error {
 	return nil
 }
 
+func (r *Room) setTheme(c *Client, theme string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	switch {
+	case c != r.admin:
+		return errNotAdmin
+	case r.state != StateWaiting:
+		return errAlreadyStarted
+	case !validTheme(theme):
+		return fmt.Errorf("%w %q", errUnknownTheme, theme)
+	}
+	r.theme = theme
+	r.broadcast(r.themePacket())
+	return nil
+}
+
 func (r *Room) reject(c *Client, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -201,6 +220,10 @@ func (r *Room) reject(c *Client, err error) {
 }
 
 // The helpers below must be called with r.mu held.
+
+func (r *Room) themePacket() ThemePacket {
+	return ThemePacket{Type: TypeTheme, Theme: r.theme, Themes: themeNames()}
+}
 
 func (r *Room) players() []PlayerInfo {
 	players := make([]PlayerInfo, len(r.clients))

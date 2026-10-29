@@ -18,8 +18,9 @@ On a fatal error the server writes to stderr and exits with code 84.
 
 | Method | Path | Body | Response |
 |---|---|---|---|
-| `GET` | `/api/rooms` | | `[{code, players, state}]` public rooms |
-| `POST` | `/api/rooms` | `{private}` | `201 {code}` |
+| `GET` | `/api/rooms` | | `[{code, players, state, theme}]` public rooms |
+| `POST` | `/api/rooms` | `{private, theme}` | `201 {code}` |
+| `GET` | `/api/themes` | | `["animaux", ...]` |
 | `GET` | `/ws?room=CODE` | | websocket |
 
 ## Websocket protocol
@@ -35,6 +36,7 @@ Client to server:
 | `draw` | `stroke: {from: {x, y}, to: {x, y}, color, size}`, coordinates in `[0, 1]` |
 | `clear` | |
 | `start` | admin only |
+| `theme` | `theme`, admin only before the game, empty for all themes |
 
 Server to client:
 
@@ -45,7 +47,8 @@ Server to client:
 | `drawing` | `strokes` |
 | `players` | `players: [{id, nickname, admin, drawer, score}]` |
 | `game` | `state`: `waiting` or `playing` |
-| `round` | `drawer`, `word` (drawer only), `hint`, `duration`, `remaining` (ms), `round`, `rounds` |
+| `theme` | `theme`, `themes` |
+| `round` | `drawer`, `word` (drawer only), `hint`, `theme`, `duration`, `remaining` (ms), `round`, `rounds` |
 | `roundEnd` | `word`, `winner`, `points` |
 | `gameEnd` | `players` ranking, then the room is closed |
 | `message`, `system`, `error` | `message`, `nickname` |
@@ -57,3 +60,4 @@ Server to client:
 - A game has 3 rounds of 80 seconds; the drawer is drawn at random each round.
 - Points: 100 scaled by the remaining time, 10 minimum.
 - Empty rooms are removed after one minute.
+- Words live in `words/<theme>.txt`, one per line: adding a file adds a theme.

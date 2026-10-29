@@ -188,6 +188,18 @@ body {
   font-weight: bold;
 }
 
+.theme-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+.theme-picker select,
+.card select {
+  padding: 0.4rem;
+}
+
 #start {
   width: 100%;
   padding: 0.6rem;

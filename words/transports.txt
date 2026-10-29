@@ -1,0 +1,16 @@
+ambulance
+avion
+bateau
+bus
+camion
+fusée
+hélicoptère
+métro
+montgolfière
+moto
+sous-marin
+tracteur
+train
+trottinette
+vélo
+voiture

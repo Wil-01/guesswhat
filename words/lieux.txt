@@ -1,0 +1,10 @@
+cinéma
+école
+église
+gare
+hôpital
+igloo
+maison
+phare
+pont
+tente
