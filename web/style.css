@@ -431,3 +431,69 @@ body {
 .lobby-footer a {
   color: #777;
 }
+
+.avatar {
+  display: block;
+  flex-shrink: 0;
+}
+
+.avatar-slot {
+  display: flex;
+  align-items: center;
+}
+
+.player {
+  align-items: center;
+}
+
+#ranking li {
+  align-items: center;
+}
+
+#ranking .name {
+  flex: 1;
+}
+
+.avatar-editor {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.avatar-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.avatar-row {
+  display: grid;
+  grid-template-columns: 2rem 5rem 2rem;
+  align-items: center;
+  text-align: center;
+}
+
+.profile {
+  margin-bottom: 1rem;
+}
+
+.profile summary {
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+
+.profile-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.profile-body #nickname-form {
+  margin-bottom: 0;
+}
+
+.profile-body .avatar-editor {
+  margin-top: 0;
+}

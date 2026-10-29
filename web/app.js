@@ -68,6 +68,8 @@ ws.addEventListener("open", () => {
   addSystem("Connected");
   const saved = storedNickname();
   if (saved) send({ type: "nickname", nickname: saved });
+  const avatar = loadAvatar();
+  if (avatar) send({ type: "avatar", avatar });
 });
 ws.addEventListener("close", () => {
   addSystem("Disconnected");
