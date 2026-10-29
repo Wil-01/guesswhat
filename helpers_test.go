@@ -32,6 +32,16 @@ type anyPacket struct {
 	Themes   []string     `json:"themes"`
 }
 
+var testWords = mustMemoryStore()
+
+func mustMemoryStore() *WordStore {
+	s, err := newMemoryWordStore()
+	if err != nil {
+		panic(err)
+	}
+	return s
+}
+
 type testClient struct {
 	*websocket.Conn
 	id       int
@@ -44,7 +54,7 @@ type testClient struct {
 
 func newTestServer(t *testing.T) (*Room, *httptest.Server) {
 	t.Helper()
-	room := newRoom()
+	room := newRoom(testWords)
 	room.rounds = 1
 	room.pauseDuration = 10 * time.Millisecond
 	srv := httptest.NewServer(websocket.Handler(room.handleWS))

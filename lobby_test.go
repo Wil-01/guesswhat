@@ -12,12 +12,12 @@ import (
 
 func newLobbyServer(t *testing.T) (*Lobby, *httptest.Server) {
 	t.Helper()
-	lobby := newLobby()
+	lobby := newLobby(testWords)
 	lobby.setup = func(r *Room) {
 		r.rounds = 1
 		r.pauseDuration = 10 * time.Millisecond
 	}
-	handler, err := newServer(lobby)
+	handler, err := newServer(lobby, &Admin{words: testWords})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestListThemes(t *testing.T) {
 	if err := json.NewDecoder(res.Body).Decode(&got); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(got, themeNames()) {
+	if !slices.Equal(got, testWords.Themes()) {
 		t.Fatalf("got themes %v", got)
 	}
 }

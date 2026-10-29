@@ -269,7 +269,7 @@ func settingsPacket(theme string, rounds, duration int) SettingsPacket {
 func TestSettingsSentOnJoin(t *testing.T) {
 	_, srv := newTestServer(t)
 	p := connect(t, srv).settings
-	if p.Theme != "" || p.Rounds != 1 || p.Duration != 80 || !slices.Equal(p.Themes, themeNames()) {
+	if p.Theme != "" || p.Rounds != 1 || p.Duration != 80 || !slices.Equal(p.Themes, testWords.Themes()) {
 		t.Fatalf("got settings packet %+v", p)
 	}
 }
@@ -291,7 +291,7 @@ func TestSetSettings(t *testing.T) {
 			t.Fatalf("client %d got round %+v", c.id, p)
 		}
 	}
-	if !slices.Contains(themes["animaux"], r.word) {
+	if !slices.Contains(testWords.Words("animaux"), r.word) {
 		t.Fatalf("%q is not an animal", r.word)
 	}
 }
@@ -303,7 +303,7 @@ func TestMixedThemeTellsWordTheme(t *testing.T) {
 	r := startGame(t, alice, alice, bob)
 
 	theme := r.packets[r.guesser()].Theme
-	if !slices.Contains(themes[theme], r.word) {
+	if !slices.Contains(testWords.Words(theme), r.word) {
 		t.Fatalf("%q is not in theme %q", r.word, theme)
 	}
 }

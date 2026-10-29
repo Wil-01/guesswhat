@@ -27,17 +27,18 @@ var errRoomNotFound = errors.New("room not found")
 // Lock order: a room may lock the lobby, never the other way around.
 type Lobby struct {
 	mu       sync.Mutex
+	words    *WordStore
 	rooms    map[string]*Room
 	emptyTTL time.Duration
 	setup    func(*Room)
 }
 
-func newLobby() *Lobby {
-	return &Lobby{rooms: make(map[string]*Room), emptyTTL: defaultEmptyTTL}
+func newLobby(words *WordStore) *Lobby {
+	return &Lobby{words: words, rooms: make(map[string]*Room), emptyTTL: defaultEmptyTTL}
 }
 
 func (l *Lobby) create(private bool, s Settings) *Room {
-	room := newRoom()
+	room := newRoom(l.words)
 	room.private = private
 	room.applySettings(s)
 	room.lobby = l
@@ -112,7 +113,7 @@ func (l *Lobby) handleCreate(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "invalid body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	if err := body.Settings.validate(); err != nil {
+	if err := body.Settings.validate(l.words); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -120,8 +121,8 @@ func (l *Lobby) handleCreate(w http.ResponseWriter, req *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]string{"code": room.code})
 }
 
-func handleThemes(w http.ResponseWriter, req *http.Request) {
-	writeJSON(w, http.StatusOK, themeNames())
+func (l *Lobby) handleThemes(w http.ResponseWriter, req *http.Request) {
+	writeJSON(w, http.StatusOK, l.words.Themes())
 }
 
 func (l *Lobby) handleWS(conn *websocket.Conn) {

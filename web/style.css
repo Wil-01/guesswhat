@@ -358,3 +358,76 @@ body {
 .room-link .meta {
   color: #555;
 }
+
+.admin {
+  max-width: 800px;
+}
+
+.status {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  background: #e8f5e9;
+  border: 1px solid #81c784;
+}
+
+.status.error {
+  background: #ffebee;
+  border-color: #e57373;
+  color: #c62828;
+}
+
+.admin input[type="password"],
+.admin input[type="search"],
+.admin .add-word input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem;
+}
+
+.admin #panel > .row {
+  margin-bottom: 1rem;
+}
+
+.theme h2 small {
+  color: #777;
+  font-weight: normal;
+}
+
+.chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+}
+
+.chip {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.3rem 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #f0f0f0;
+}
+
+.chip .remove {
+  border: none;
+  background: none;
+  color: #888;
+  cursor: pointer;
+}
+
+.chip .remove:hover,
+.danger {
+  color: #c62828;
+}
+
+.lobby-footer {
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.lobby-footer a {
+  color: #777;
+}

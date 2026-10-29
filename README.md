@@ -6,10 +6,17 @@ One player draws a random word, the first one to guess it wins points proportion
 ## Run
 
 ```sh
-go run .            # http://localhost:8080
-PORT=3000 go run .  # custom port
+go run .                          # http://localhost:8080
+PORT=3000 go run .                # custom port
+ADMIN_PASSWORD=secret go run .    # enables http://localhost:8080/admin.html
 go test -race ./...
 ```
+
+| Variable | Default | |
+|---|---|---|
+| `PORT` | `8080` | HTTP port |
+| `WORDS_DIR` | `data/words` | word lists, seeded with the default ones on first run |
+| `ADMIN_PASSWORD` | | admin page and API are disabled when empty |
 
 The front is embedded in the binary (`go build` produces a standalone executable).
 On a fatal error the server writes to stderr and exits with code 84.
@@ -22,6 +29,16 @@ On a fatal error the server writes to stderr and exits with code 84.
 | `POST` | `/api/rooms` | `{private, theme, rounds, duration}`, all optional | `201 {code}` |
 | `GET` | `/api/themes` | | `["animaux", ...]` |
 | `GET` | `/ws?room=CODE` | | websocket |
+
+Admin API, with an `Authorization: Bearer <ADMIN_PASSWORD>` header:
+
+| Method | Path | Body | Response |
+|---|---|---|---|
+| `GET` | `/api/admin/themes` | | `{theme: [words]}` |
+| `POST` | `/api/admin/themes` | `{name, words}` | `201 [words]` |
+| `DELETE` | `/api/admin/themes/{theme}` | | `204` |
+| `POST` | `/api/admin/themes/{theme}/words` | `{word}` | `201 [words]` |
+| `DELETE` | `/api/admin/themes/{theme}/words/{word}` | | `204` |
 
 ## Websocket protocol
 
@@ -71,4 +88,5 @@ A stroke is one drawing operation, coordinates are in `[0, 1]`:
 - A game has 3 rounds of 80 seconds by default, the admin can change it before starting; the drawer is drawn at random each round.
 - Points: 100 scaled by the remaining time, 10 minimum.
 - Empty rooms are removed after one minute.
-- Words live in `words/<theme>.txt`, one per line: adding a file adds a theme.
+- Words live in `WORDS_DIR/<theme>.txt`, one per line, editable from the admin page; the defaults are in `words/`.
+- A word is unique across all themes (case and accents ignored).

@@ -1,56 +1,32 @@
 package main
 
 import (
-	"slices"
 	"testing"
 	"testing/fstest"
 )
 
-func TestThemesLoaded(t *testing.T) {
-	if themesErr != nil {
-		t.Fatal(themesErr)
-	}
+func TestDefaultWords(t *testing.T) {
 	seen := make(map[string]string)
-	for name, list := range themes {
+	for name, list := range testWords.All() {
 		for _, w := range list {
-			n := normalize(w)
-			if n == "" {
+			if _, err := cleanWord(w); err != nil {
 				t.Fatalf("bad word %q in %s", w, name)
 			}
-			if other, ok := seen[n]; ok {
+			if other, ok := seen[normalize(w)]; ok {
 				t.Fatalf("%q is in both %s and %s", w, other, name)
 			}
-			seen[n] = name
+			seen[normalize(w)] = name
 		}
 	}
 }
 
 func TestLoadThemesErrors(t *testing.T) {
-	if _, err := loadThemes(fstest.MapFS{}); err == nil {
-		t.Fatal("expected error without themes")
+	if _, err := loadThemes(fstest.MapFS{}, "*.txt"); err != errNoThemes {
+		t.Fatalf("got %v, want errNoThemes", err)
 	}
-	empty := fstest.MapFS{"words/empty.txt": {Data: []byte("\n  \n")}}
-	if _, err := loadThemes(empty); err == nil {
+	empty := fstest.MapFS{"empty.txt": {Data: []byte("\n  \n")}}
+	if _, err := loadThemes(empty, "*.txt"); err == nil {
 		t.Fatal("expected error for an empty theme")
-	}
-}
-
-func TestRandomWord(t *testing.T) {
-	for _, name := range themeNames() {
-		word, theme := randomWord(name)
-		if theme != name || !slices.Contains(themes[name], word) {
-			t.Fatalf("randomWord(%q) = %q, %q", name, word, theme)
-		}
-	}
-	word, theme := randomWord("")
-	if !slices.Contains(themes[theme], word) {
-		t.Fatalf("randomWord(\"\") = %q, %q", word, theme)
-	}
-}
-
-func TestValidTheme(t *testing.T) {
-	if !validTheme("") || !validTheme("animaux") || validTheme("nope") {
-		t.Fatal("unexpected validTheme result")
 	}
 }
 
