@@ -26,11 +26,28 @@
     <aside class="players">
       <h2>Joueurs</h2>
       <ul id="players"></ul>
-      <label class="theme-picker">Thème
-        <select id="theme" disabled>
-          <option value="">Tous les thèmes</option>
-        </select>
-      </label>
+      <div class="settings">
+        <label>Thème
+          <select id="theme" disabled>
+            <option value="">Tous les thèmes</option>
+          </select>
+        </label>
+        <label>Manches
+          <input id="rounds" type="number" min="1" max="10" value="3" disabled>
+        </label>
+        <label>Durée d'une manche
+          <select id="duration" disabled>
+            <option value="30">30 s</option>
+            <option value="45">45 s</option>
+            <option value="60">60 s</option>
+            <option value="80">80 s</option>
+            <option value="100">100 s</option>
+            <option value="120">120 s</option>
+            <option value="150">150 s</option>
+            <option value="180">180 s</option>
+          </select>
+        </label>
+      </div>
       <button id="start" type="button" hidden>Start</button>
     </aside>
     <section class="board">

@@ -1,6 +1,8 @@
 const nicknameInput = document.getElementById("nickname");
 const privateInput = document.getElementById("private");
 const themeSelect = document.getElementById("theme");
+const roundsInput = document.getElementById("rounds");
+const durationSelect = document.getElementById("duration");
 const createButton = document.getElementById("create");
 const createError = document.getElementById("create-error");
 const joinForm = document.getElementById("join-form");
@@ -31,7 +33,12 @@ createButton.addEventListener("click", async () => {
     const res = await fetch("/api/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ private: privateInput.checked, theme: themeSelect.value }),
+      body: JSON.stringify({
+        private: privateInput.checked,
+        theme: themeSelect.value,
+        rounds: Number(roundsInput.value),
+        duration: Number(durationSelect.value),
+      }),
     });
     if (!res.ok) throw new Error(await res.text());
     const { code } = await res.json();

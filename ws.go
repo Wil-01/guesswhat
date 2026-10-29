@@ -81,12 +81,12 @@ func (r *Room) handlePacket(c *Client, raw json.RawMessage) error {
 		return r.clear(c)
 	case TypeStart:
 		return r.start(c)
-	case TypeTheme:
-		var p ThemePacket
+	case TypeSettings:
+		var p SettingsPacket
 		if err := json.Unmarshal(raw, &p); err != nil {
 			return err
 		}
-		return r.setTheme(c, p.Theme)
+		return r.setSettings(c, p.Settings)
 	default:
 		return fmt.Errorf("unknown packet type %q", env.Type)
 	}

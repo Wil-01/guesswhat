@@ -110,7 +110,7 @@ func (r *Room) join(conn *websocket.Conn) (*Client, error) {
 	r.send(c, NicknamePacket{Type: TypeNickname, ID: c.id, Nickname: c.nickname})
 	r.send(c, HistoryPacket{Type: TypeHistory, Messages: r.history})
 	r.send(c, DrawingPacket{Type: TypeDrawing, Strokes: r.drawing})
-	r.send(c, r.themePacket())
+	r.send(c, r.settingsPacket())
 	r.send(c, GamePacket{Type: TypeGame, State: r.state})
 	if r.roundActive() {
 		r.send(c, r.roundPacket(c))
@@ -218,7 +218,7 @@ func (r *Room) clear(c *Client) error {
 	return nil
 }
 
-func (r *Room) setTheme(c *Client, theme string) error {
+func (r *Room) setSettings(c *Client, s Settings) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	switch {
@@ -226,11 +226,12 @@ func (r *Room) setTheme(c *Client, theme string) error {
 		return errNotAdmin
 	case r.state != StateWaiting:
 		return errAlreadyStarted
-	case !validTheme(theme):
-		return fmt.Errorf("%w %q", errUnknownTheme, theme)
 	}
-	r.theme = theme
-	r.broadcast(r.themePacket())
+	if err := s.validate(); err != nil {
+		return err
+	}
+	r.applySettings(s)
+	r.broadcast(r.settingsPacket())
 	return nil
 }
 
@@ -242,8 +243,22 @@ func (r *Room) reject(c *Client, err error) {
 
 // The helpers below must be called with r.mu held.
 
-func (r *Room) themePacket() ThemePacket {
-	return ThemePacket{Type: TypeTheme, Theme: r.theme, Themes: themeNames()}
+func (r *Room) applySettings(s Settings) {
+	r.theme = s.Theme
+	r.rounds = s.Rounds
+	r.roundDuration = time.Duration(s.Duration) * time.Second
+}
+
+func (r *Room) settingsPacket() SettingsPacket {
+	return SettingsPacket{
+		Type: TypeSettings,
+		Settings: Settings{
+			Theme:    r.theme,
+			Rounds:   r.rounds,
+			Duration: int(r.roundDuration / time.Second),
+		},
+		Themes: themeNames(),
+	}
 }
 
 func (r *Room) players() []PlayerInfo {

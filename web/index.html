@@ -21,6 +21,23 @@
         <option value="">Tous les thèmes</option>
       </select>
     </label>
+    <div class="row inline">
+      <label>Manches
+        <input id="rounds" type="number" min="1" max="10" value="3">
+      </label>
+      <label>Durée
+        <select id="duration">
+          <option value="30">30 s</option>
+          <option value="45">45 s</option>
+          <option value="60">60 s</option>
+          <option value="80" selected>80 s</option>
+          <option value="100">100 s</option>
+          <option value="120">120 s</option>
+          <option value="150">150 s</option>
+          <option value="180">180 s</option>
+        </select>
+      </label>
+    </div>
     <label class="inline"><input id="private" type="checkbox"> Room privée</label>
     <button id="create" type="button">Créer</button>
     <p id="create-error" class="error" hidden></p>

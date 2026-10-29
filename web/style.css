@@ -226,15 +226,23 @@ body {
   font-weight: bold;
 }
 
-.theme-picker {
+.settings {
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
+  gap: 0.6rem;
   margin-bottom: 1rem;
 }
 
-.theme-picker select,
-.card select {
+.settings label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.settings select,
+.settings input,
+.card select,
+.card input[type="number"] {
   padding: 0.4rem;
 }
 
