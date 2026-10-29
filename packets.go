@@ -5,9 +5,13 @@ const (
 	TypeMessage  = "message"
 	TypeHistory  = "history"
 	TypeSystem   = "system"
+	TypeError    = "error"
 	TypeDraw     = "draw"
 	TypeClear    = "clear"
 	TypeDrawing  = "drawing"
+	TypePlayers  = "players"
+	TypeGame     = "game"
+	TypeStart    = "start"
 )
 
 type Envelope struct {
@@ -16,6 +20,7 @@ type Envelope struct {
 
 type NicknamePacket struct {
 	Type     string `json:"type"`
+	ID       int    `json:"id,omitempty"`
 	Nickname string `json:"nickname"`
 }
 
@@ -50,4 +55,20 @@ type DrawPacket struct {
 type DrawingPacket struct {
 	Type    string   `json:"type"`
 	Strokes []Stroke `json:"strokes"`
+}
+
+type PlayerInfo struct {
+	ID       int    `json:"id"`
+	Nickname string `json:"nickname"`
+	Admin    bool   `json:"admin"`
+}
+
+type PlayersPacket struct {
+	Type    string       `json:"type"`
+	Players []PlayerInfo `json:"players"`
+}
+
+type GamePacket struct {
+	Type  string `json:"type"`
+	State string `json:"state"`
 }
