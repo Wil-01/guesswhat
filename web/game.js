@@ -58,6 +58,7 @@ function renderPlayers() {
     ...players.map((player) => {
       const li = playerTemplate.content.firstElementChild.cloneNode(true);
       li.classList.toggle("me", player.id === myId);
+      li.querySelector(".avatar-slot").replaceChildren(avatarSVG(player.avatar, 32));
       li.querySelector(".name").textContent = player.nickname + (player.id === myId ? " (you)" : "");
       li.querySelector(".badges").textContent = (player.drawer ? "✏️" : "") + (player.admin ? "👑" : "");
       li.querySelector(".score").textContent = player.score;
@@ -74,8 +75,18 @@ function themeLabel(theme) {
   return theme.charAt(0).toUpperCase() + theme.slice(1);
 }
 
+const avatarEditor = createAvatarEditor(document.getElementById("avatar-editor"), loadAvatar() || randomAvatar(), (avatar) => {
+  saveAvatar(avatar);
+  send({ type: "avatar", avatar });
+});
+
 handlers.players = (p) => {
   players = p.players;
+  const me = players.find((player) => player.id === myId);
+  if (me && !loadAvatar()) {
+    saveAvatar(me.avatar);
+    avatarEditor.set(me.avatar);
+  }
   renderPlayers();
 };
 
@@ -110,6 +121,7 @@ handlers.gameEnd = (p) => {
   ranking.replaceChildren(
     ...p.players.map((player) => {
       const li = rankTemplate.content.firstElementChild.cloneNode(true);
+      li.querySelector(".avatar-slot").replaceChildren(avatarSVG(player.avatar, 28));
       li.querySelector(".name").textContent = player.nickname;
       li.querySelector(".score").textContent = `${player.score} pts`;
       return li;

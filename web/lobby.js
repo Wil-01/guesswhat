@@ -23,6 +23,10 @@ nicknameInput.addEventListener("change", () => {
   } catch {}
 });
 
+const initialAvatar = loadAvatar() || randomAvatar();
+saveAvatar(initialAvatar);
+createAvatarEditor(document.getElementById("avatar-editor"), initialAvatar, saveAvatar);
+
 function goToRoom(code) {
   location.href = `/room.html?code=${encodeURIComponent(code.toUpperCase())}`;
 }

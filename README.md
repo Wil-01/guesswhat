@@ -53,6 +53,7 @@ Client to server:
 | `draw` | `stroke`, see below |
 | `undo` | removes the last action |
 | `clear` | |
+| `avatar` | `avatar: {color, eyes, mouth}`, indexes in `[0, 12)`, `[0, 6)`, `[0, 6)` |
 | `start` | admin only |
 | `settings` | `theme` (empty for all), `rounds` (1-10), `duration` (30-180 s), admin only before the game |
 
@@ -63,7 +64,7 @@ Server to client:
 | `nickname` | `id`, `nickname` |
 | `history` | `messages` |
 | `drawing` | `strokes`, full redraw (on join and after an undo) |
-| `players` | `players: [{id, nickname, admin, drawer, score}]` |
+| `players` | `players: [{id, nickname, admin, drawer, score, avatar}]` |
 | `game` | `state`: `waiting` or `playing` |
 | `settings` | `theme`, `rounds`, `duration` (s), `themes` |
 | `round` | `drawer`, `word` (drawer only), `hint`, `theme`, `duration`, `remaining` (ms), `round`, `rounds` |

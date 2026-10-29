@@ -17,6 +17,7 @@ const (
 	TypeRoundEnd = "roundEnd"
 	TypeGameEnd  = "gameEnd"
 	TypeSettings = "settings"
+	TypeAvatar   = "avatar"
 )
 
 type Envelope struct {
@@ -72,6 +73,12 @@ type PlayerInfo struct {
 	Admin    bool   `json:"admin"`
 	Drawer   bool   `json:"drawer"`
 	Score    int    `json:"score"`
+	Avatar   Avatar `json:"avatar"`
+}
+
+type AvatarPacket struct {
+	Type   string `json:"type"`
+	Avatar Avatar `json:"avatar"`
 }
 
 type PlayersPacket struct {

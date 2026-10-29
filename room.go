@@ -39,6 +39,7 @@ type Client struct {
 	id       int
 	nickname string
 	score    int
+	avatar   Avatar
 }
 
 type Room struct {
@@ -104,7 +105,7 @@ func (r *Room) join(conn *websocket.Conn) (*Client, error) {
 		r.cleanup = nil
 	}
 	r.nextID++
-	c := &Client{conn: conn, id: r.nextID, nickname: fmt.Sprintf("guest%d", r.nextID)}
+	c := &Client{conn: conn, id: r.nextID, nickname: fmt.Sprintf("guest%d", r.nextID), avatar: randomAvatar()}
 	r.clients = append(r.clients, c)
 	if r.admin == nil {
 		r.admin = c
@@ -237,6 +238,17 @@ func (r *Room) setSettings(c *Client, s Settings) error {
 	return nil
 }
 
+func (r *Room) setAvatar(c *Client, a Avatar) error {
+	if !a.valid() {
+		return errInvalidAvatar
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	c.avatar = a
+	r.broadcastPlayers()
+	return nil
+}
+
 func (r *Room) reject(c *Client, err error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -272,6 +284,7 @@ func (r *Room) players() []PlayerInfo {
 			Admin:    c == r.admin,
 			Drawer:   r.state == StatePlaying && c == r.drawer,
 			Score:    c.score,
+			Avatar:   c.avatar,
 		}
 	}
 	return players
