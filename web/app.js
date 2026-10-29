@@ -5,6 +5,7 @@ const messages = document.getElementById("messages");
 const nicknameForm = document.getElementById("nickname-form");
 const nicknameInput = document.getElementById("nickname");
 
+let myId = 0;
 let myNickname = "";
 
 function storedNickname() {
@@ -25,9 +26,9 @@ function send(packet) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(packet));
 }
 
-function addSystem(text) {
+function addSystem(text, className = "system") {
   const li = document.createElement("li");
-  li.className = "system";
+  li.className = className;
   li.textContent = text;
   append(li);
 }
@@ -49,12 +50,14 @@ function append(li) {
 
 const handlers = {
   nickname: (p) => {
+    myId = p.id;
     myNickname = p.nickname;
     nicknameInput.value = p.nickname;
   },
   history: (p) => p.messages.forEach(addChat),
   message: addChat,
   system: (p) => addSystem(p.message),
+  error: (p) => addSystem(p.message, "error"),
 };
 
 ws.addEventListener("open", () => {

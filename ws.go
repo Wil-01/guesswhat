@@ -28,7 +28,8 @@ func (h *Hub) handleWS(conn *websocket.Conn) {
 			return
 		}
 		if err := h.handlePacket(client, raw); err != nil {
-			fmt.Fprintln(os.Stderr, "packet error:", err)
+			fmt.Fprintf(os.Stderr, "client %d: %v\n", client.id, err)
+			h.reject(client, err)
 		}
 	}
 }
@@ -70,6 +71,8 @@ func (h *Hub) handlePacket(c *Client, raw json.RawMessage) error {
 		h.draw(c, p.Stroke)
 	case TypeClear:
 		h.clear()
+	case TypeStart:
+		return h.start(c)
 	default:
 		return fmt.Errorf("unknown packet type %q", env.Type)
 	}

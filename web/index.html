@@ -14,6 +14,11 @@
     <button type="submit">Changer</button>
   </form>
   <main class="game">
+    <aside class="players">
+      <h2>Joueurs</h2>
+      <ul id="players"></ul>
+      <button id="start" type="button" hidden>Start</button>
+    </aside>
     <section class="board">
       <div class="toolbar">
         <input id="color" type="color" value="#000000" aria-label="Couleur">
@@ -30,7 +35,16 @@
       </form>
     </section>
   </main>
+
+  <template id="player-template">
+    <li class="player">
+      <span class="name"></span>
+      <span class="badges"></span>
+    </li>
+  </template>
+
   <script src="app.js"></script>
   <script src="canvas.js"></script>
+  <script src="game.js"></script>
 </body>
 </html>
