@@ -14,6 +14,8 @@ type anyPacket struct {
 	Nickname string       `json:"nickname"`
 	Message  string       `json:"message"`
 	Messages []ChatPacket `json:"messages"`
+	Stroke   Stroke       `json:"stroke"`
+	Strokes  []Stroke     `json:"strokes"`
 }
 
 func newTestServer(t *testing.T) (*Hub, *httptest.Server) {
@@ -39,6 +41,11 @@ func expect(t *testing.T, ws *websocket.Conn, typ string) anyPacket {
 
 // connect dials and consumes the welcome packets, so the client is registered on return.
 func connect(t *testing.T, srv *httptest.Server) (*websocket.Conn, string, []ChatPacket) {
+	ws, nick, history, _ := connectWithDrawing(t, srv)
+	return ws, nick, history
+}
+
+func connectWithDrawing(t *testing.T, srv *httptest.Server) (*websocket.Conn, string, []ChatPacket, []Stroke) {
 	t.Helper()
 	url := "ws" + strings.TrimPrefix(srv.URL, "http")
 	ws, err := websocket.Dial(url, "", srv.URL)
@@ -48,7 +55,8 @@ func connect(t *testing.T, srv *httptest.Server) (*websocket.Conn, string, []Cha
 	t.Cleanup(func() { ws.Close() })
 	nick := expect(t, ws, TypeNickname).Nickname
 	history := expect(t, ws, TypeHistory).Messages
-	return ws, nick, history
+	drawing := expect(t, ws, TypeDrawing).Strokes
+	return ws, nick, history, drawing
 }
 
 func send(t *testing.T, ws *websocket.Conn, v any) {
@@ -141,4 +149,67 @@ func TestClientRemovedOnDisconnect(t *testing.T) {
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+}
+
+var testStroke = Stroke{From: Point{0.1, 0.1}, To: Point{0.5, 0.5}, Color: "#ff0000", Size: 4}
+
+func TestDrawBroadcastToOthers(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice, _, _ := connect(t, srv)
+	bob, _, _ := connect(t, srv)
+
+	send(t, alice, DrawPacket{Type: TypeDraw, Stroke: testStroke})
+	if got := expect(t, bob, TypeDraw).Stroke; got != testStroke {
+		t.Fatalf("got stroke %+v", got)
+	}
+
+	send(t, alice, ChatPacket{Type: TypeMessage, Message: "done"})
+	expect(t, alice, TypeMessage)
+}
+
+func TestDrawingSentOnJoin(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice, _, _ := connect(t, srv)
+	send(t, alice, DrawPacket{Type: TypeDraw, Stroke: testStroke})
+	send(t, alice, ChatPacket{Type: TypeMessage, Message: "sync"})
+	expect(t, alice, TypeMessage)
+
+	_, _, _, drawing := connectWithDrawing(t, srv)
+	if len(drawing) != 1 || drawing[0] != testStroke {
+		t.Fatalf("got drawing %+v", drawing)
+	}
+}
+
+func TestClear(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice, _, _ := connect(t, srv)
+	bob, _, _ := connect(t, srv)
+	send(t, alice, DrawPacket{Type: TypeDraw, Stroke: testStroke})
+	expect(t, bob, TypeDraw)
+
+	send(t, alice, Envelope{Type: TypeClear})
+	expect(t, alice, TypeClear)
+	expect(t, bob, TypeClear)
+
+	_, _, _, drawing := connectWithDrawing(t, srv)
+	if len(drawing) != 0 {
+		t.Fatalf("got drawing %+v", drawing)
+	}
+}
+
+func TestInvalidStrokeIgnored(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice, _, _ := connect(t, srv)
+	bob, _, _ := connect(t, srv)
+
+	bad := []Stroke{
+		{From: Point{-1, 0}, To: Point{0.5, 0.5}, Color: "#000000", Size: 4},
+		{From: Point{0, 0}, To: Point{0.5, 0.5}, Color: "red", Size: 4},
+		{From: Point{0, 0}, To: Point{0.5, 0.5}, Color: "#000000", Size: 500},
+	}
+	for _, s := range bad {
+		send(t, alice, DrawPacket{Type: TypeDraw, Stroke: s})
+	}
+	send(t, alice, ChatPacket{Type: TypeMessage, Message: "after"})
+	expect(t, bob, TypeMessage)
 }

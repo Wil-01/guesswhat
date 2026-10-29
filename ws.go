@@ -59,6 +59,17 @@ func (h *Hub) handlePacket(c *Client, raw json.RawMessage) error {
 			return nil
 		}
 		h.chat(c, text)
+	case TypeDraw:
+		var p DrawPacket
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return err
+		}
+		if !p.Stroke.valid() {
+			return fmt.Errorf("invalid stroke %+v", p.Stroke)
+		}
+		h.draw(c, p.Stroke)
+	case TypeClear:
+		h.clear()
 	default:
 		return fmt.Errorf("unknown packet type %q", env.Type)
 	}
