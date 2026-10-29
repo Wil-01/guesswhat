@@ -59,7 +59,7 @@ func (h *Hub) handlePacket(c *Client, raw json.RawMessage) error {
 		if text == "" {
 			return nil
 		}
-		h.chat(c, text)
+		return h.chat(c, text)
 	case TypeDraw:
 		var p DrawPacket
 		if err := json.Unmarshal(raw, &p); err != nil {
@@ -68,9 +68,9 @@ func (h *Hub) handlePacket(c *Client, raw json.RawMessage) error {
 		if !p.Stroke.valid() {
 			return fmt.Errorf("invalid stroke %+v", p.Stroke)
 		}
-		h.draw(c, p.Stroke)
+		return h.draw(c, p.Stroke)
 	case TypeClear:
-		h.clear()
+		return h.clear(c)
 	case TypeStart:
 		return h.start(c)
 	default:

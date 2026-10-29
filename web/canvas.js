@@ -30,12 +30,13 @@ function toPoint(event) {
 }
 
 canvas.addEventListener("pointerdown", (event) => {
+  if (!canDraw()) return;
   canvas.setPointerCapture(event.pointerId);
   last = toPoint(event);
 });
 
 canvas.addEventListener("pointermove", (event) => {
-  if (!last) return;
+  if (!last || !canDraw()) return;
   const point = toPoint(event);
   const stroke = { from: last, to: point, color: colorInput.value, size: Number(sizeInput.value) };
   drawStroke(stroke);

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"strings"
 	"sync"
 
 	"golang.org/x/net/websocket"
@@ -21,6 +22,8 @@ var (
 	errNotAdmin         = errors.New("only the admin can start the game")
 	errAlreadyStarted   = errors.New("the game has already started")
 	errNotEnoughPlayers = fmt.Errorf("at least %d players are needed", minPlayers)
+	errNotDrawer        = errors.New("only the drawer can draw")
+	errRevealWord       = errors.New("you can't reveal the word")
 )
 
 type Client struct {
@@ -33,6 +36,8 @@ type Hub struct {
 	mu      sync.Mutex
 	clients []*Client
 	admin   *Client
+	drawer  *Client
+	word    string
 	state   string
 	history []ChatPacket
 	drawing []Stroke
@@ -60,6 +65,9 @@ func (h *Hub) join(conn *websocket.Conn) *Client {
 	h.send(c, HistoryPacket{Type: TypeHistory, Messages: h.history})
 	h.send(c, DrawingPacket{Type: TypeDrawing, Strokes: h.drawing})
 	h.send(c, GamePacket{Type: TypeGame, State: h.state})
+	if h.state == StatePlaying {
+		h.send(c, h.roundPacket(c))
+	}
 	h.broadcastPlayers()
 	return c
 }
@@ -72,6 +80,14 @@ func (h *Hub) leave(c *Client) {
 		h.admin = nil
 		if len(h.clients) > 0 {
 			h.admin = h.clients[0]
+		}
+	}
+	if h.state == StatePlaying {
+		switch {
+		case len(h.clients) < minPlayers:
+			h.stopGame("Not enough players left.")
+		case c == h.drawer:
+			h.stopGame("The drawer has left.")
 		}
 	}
 	h.broadcastPlayers()
@@ -87,42 +103,36 @@ func (h *Hub) rename(c *Client, nickname string) {
 	h.broadcastPlayers()
 }
 
-func (h *Hub) chat(c *Client, text string) {
+func (h *Hub) chat(c *Client, text string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if h.state == StatePlaying && c == h.drawer && strings.Contains(normalize(text), normalize(h.word)) {
+		return errRevealWord
+	}
 	msg := ChatPacket{Type: TypeMessage, Message: text, Nickname: c.nickname}
 	h.history = append(h.history, msg)
 	h.broadcast(msg)
+	return nil
 }
 
-func (h *Hub) draw(from *Client, s Stroke) {
+func (h *Hub) draw(from *Client, s Stroke) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if !h.canDraw(from) {
+		return errNotDrawer
+	}
 	h.drawing = append(h.drawing, s)
 	h.broadcastExcept(from, DrawPacket{Type: TypeDraw, Stroke: s})
+	return nil
 }
 
-func (h *Hub) clear() {
+func (h *Hub) clear(c *Client) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	h.drawing = []Stroke{}
-	h.broadcast(Envelope{Type: TypeClear})
-}
-
-func (h *Hub) start(c *Client) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	switch {
-	case c != h.admin:
-		return errNotAdmin
-	case h.state != StateWaiting:
-		return errAlreadyStarted
-	case len(h.clients) < minPlayers:
-		return errNotEnoughPlayers
+	if !h.canDraw(c) {
+		return errNotDrawer
 	}
-	h.state = StatePlaying
-	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: "The game has started!"})
+	h.clearDrawing()
 	return nil
 }
 
@@ -137,9 +147,23 @@ func (h *Hub) reject(c *Client, err error) {
 func (h *Hub) players() []PlayerInfo {
 	players := make([]PlayerInfo, len(h.clients))
 	for i, c := range h.clients {
-		players[i] = PlayerInfo{ID: c.id, Nickname: c.nickname, Admin: c == h.admin}
+		players[i] = PlayerInfo{
+			ID:       c.id,
+			Nickname: c.nickname,
+			Admin:    c == h.admin,
+			Drawer:   h.state == StatePlaying && c == h.drawer,
+		}
 	}
 	return players
+}
+
+func (h *Hub) canDraw(c *Client) bool {
+	return h.state != StatePlaying || c == h.drawer
+}
+
+func (h *Hub) clearDrawing() {
+	h.drawing = []Stroke{}
+	h.broadcast(Envelope{Type: TypeClear})
 }
 
 func (h *Hub) broadcastPlayers() {
