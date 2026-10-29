@@ -3,9 +3,12 @@
 Online Pictionary-like game: a Go websocket server and an HTML/CSS/JS front.
 One player draws a random word, the first one to guess it wins points proportional to their speed.
 
+Repository: https://github.com/Wil-01/guesswhat
+
 ## Run
 
 ```sh
+git clone https://github.com/Wil-01/guesswhat.git && cd guesswhat
 go run .                          # http://localhost:8080
 PORT=3000 go run .                # custom port
 ADMIN_PASSWORD=secret go run .    # enables http://localhost:8080/admin.html
