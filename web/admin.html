@@ -5,11 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GuessWhat · Administration</title>
   <link rel="stylesheet" href="style.css">
+  <script src="theme.js"></script>
 </head>
 <body class="admin">
   <header class="room-header">
-    <h1><a href="/">GuessWhat</a></h1>
-    <span>Administration des mots</span>
+    <h1><a href="/" class="logo-mark">GuessWhat</a></h1>
+    <div class="header-actions">
+      <span>Administration des mots</span>
+      <button id="theme-toggle" class="icon-button" type="button"></button>
+    </div>
   </header>
 
   <p id="status" class="status" hidden></p>
