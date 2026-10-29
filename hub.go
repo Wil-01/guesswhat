@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/net/websocket"
 )
@@ -15,7 +16,8 @@ const (
 	StateWaiting = "waiting"
 	StatePlaying = "playing"
 
-	minPlayers = 2
+	minPlayers           = 2
+	defaultRoundDuration = 80 * time.Second
 )
 
 var (
@@ -30,6 +32,7 @@ type Client struct {
 	conn     *websocket.Conn
 	id       int
 	nickname string
+	score    int
 }
 
 type Hub struct {
@@ -42,13 +45,19 @@ type Hub struct {
 	history []ChatPacket
 	drawing []Stroke
 	nextID  int
+
+	roundDuration time.Duration
+	roundID       int
+	roundEndsAt   time.Time
+	timer         *time.Timer
 }
 
 func newHub() *Hub {
 	return &Hub{
-		state:   StateWaiting,
-		history: []ChatPacket{},
-		drawing: []Stroke{},
+		state:         StateWaiting,
+		history:       []ChatPacket{},
+		drawing:       []Stroke{},
+		roundDuration: defaultRoundDuration,
 	}
 }
 
@@ -106,8 +115,14 @@ func (h *Hub) rename(c *Client, nickname string) {
 func (h *Hub) chat(c *Client, text string) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	if h.state == StatePlaying && c == h.drawer && strings.Contains(normalize(text), normalize(h.word)) {
-		return errRevealWord
+	if h.state == StatePlaying {
+		if c == h.drawer && strings.Contains(normalize(text), normalize(h.word)) {
+			return errRevealWord
+		}
+		if c != h.drawer && normalize(text) == normalize(h.word) {
+			h.guessed(c)
+			return nil
+		}
 	}
 	msg := ChatPacket{Type: TypeMessage, Message: text, Nickname: c.nickname}
 	h.history = append(h.history, msg)
@@ -152,6 +167,7 @@ func (h *Hub) players() []PlayerInfo {
 			Nickname: c.nickname,
 			Admin:    c == h.admin,
 			Drawer:   h.state == StatePlaying && c == h.drawer,
+			Score:    c.score,
 		}
 	}
 	return players

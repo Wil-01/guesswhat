@@ -13,6 +13,8 @@ const (
 	TypeGame     = "game"
 	TypeStart    = "start"
 	TypeRound    = "round"
+	TypeRoundEnd = "roundEnd"
+	TypeGameEnd  = "gameEnd"
 )
 
 type Envelope struct {
@@ -63,6 +65,7 @@ type PlayerInfo struct {
 	Nickname string `json:"nickname"`
 	Admin    bool   `json:"admin"`
 	Drawer   bool   `json:"drawer"`
+	Score    int    `json:"score"`
 }
 
 type PlayersPacket struct {
@@ -71,10 +74,24 @@ type PlayersPacket struct {
 }
 
 type RoundPacket struct {
+	Type      string `json:"type"`
+	Drawer    int    `json:"drawer"`
+	Word      string `json:"word,omitempty"`
+	Hint      string `json:"hint"`
+	Duration  int64  `json:"duration"`
+	Remaining int64  `json:"remaining"`
+}
+
+type RoundEndPacket struct {
 	Type   string `json:"type"`
-	Drawer int    `json:"drawer"`
-	Word   string `json:"word,omitempty"`
-	Hint   string `json:"hint"`
+	Word   string `json:"word"`
+	Winner int    `json:"winner"`
+	Points int    `json:"points"`
+}
+
+type GameEndPacket struct {
+	Type    string       `json:"type"`
+	Players []PlayerInfo `json:"players"`
 }
 
 type GamePacket struct {

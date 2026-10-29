@@ -1,6 +1,16 @@
 package main
 
-import "fmt"
+import (
+	"cmp"
+	"fmt"
+	"slices"
+	"time"
+)
+
+const (
+	maxPoints = 100
+	minPoints = 10
+)
 
 func (h *Hub) start(c *Client) error {
 	h.mu.Lock()
@@ -12,6 +22,9 @@ func (h *Hub) start(c *Client) error {
 		return errAlreadyStarted
 	case len(h.clients) < minPlayers:
 		return errNotEnoughPlayers
+	}
+	for _, p := range h.clients {
+		p.score = 0
 	}
 	h.state = StatePlaying
 	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
@@ -25,6 +38,11 @@ func (h *Hub) start(c *Client) error {
 func (h *Hub) startRound(drawer *Client) {
 	h.drawer = drawer
 	h.word = randomWord()
+	h.roundID++
+	h.roundEndsAt = time.Now().Add(h.roundDuration)
+	id := h.roundID
+	h.timer = time.AfterFunc(h.roundDuration, func() { h.timeUp(id) })
+
 	h.clearDrawing()
 	for _, c := range h.clients {
 		h.send(c, h.roundPacket(c))
@@ -34,17 +52,80 @@ func (h *Hub) startRound(drawer *Client) {
 }
 
 func (h *Hub) roundPacket(c *Client) RoundPacket {
-	p := RoundPacket{Type: TypeRound, Drawer: h.drawer.id, Hint: hint(h.word)}
+	p := RoundPacket{
+		Type:      TypeRound,
+		Drawer:    h.drawer.id,
+		Hint:      hint(h.word),
+		Duration:  h.roundDuration.Milliseconds(),
+		Remaining: max(time.Until(h.roundEndsAt), 0).Milliseconds(),
+	}
 	if c == h.drawer {
 		p.Word = h.word
 	}
 	return p
 }
 
+func (h *Hub) guessed(c *Client) {
+	points := pointsFor(time.Until(h.roundEndsAt), h.roundDuration)
+	c.score += points
+	h.broadcast(ChatPacket{Type: TypeSystem, Message: fmt.Sprintf("%s guessed the word! (+%d)", c.nickname, points)})
+	h.endRound(c, points)
+}
+
+func (h *Hub) endRound(winner *Client, points int) {
+	h.stopTimer()
+	p := RoundEndPacket{Type: TypeRoundEnd, Word: h.word, Points: points}
+	if winner != nil {
+		p.Winner = winner.id
+	}
+	h.broadcast(p)
+	h.endGame()
+}
+
+func (h *Hub) endGame() {
+	ranking := h.players()
+	slices.SortStableFunc(ranking, func(a, b PlayerInfo) int { return cmp.Compare(b.Score, a.Score) })
+	h.reset()
+	h.broadcast(GameEndPacket{Type: TypeGameEnd, Players: ranking})
+	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
+	h.broadcastPlayers()
+}
+
 func (h *Hub) stopGame(reason string) {
+	h.stopTimer()
+	h.reset()
+	h.broadcast(ChatPacket{Type: TypeSystem, Message: reason})
+	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
+}
+
+func (h *Hub) reset() {
 	h.state = StateWaiting
 	h.drawer = nil
 	h.word = ""
-	h.broadcast(ChatPacket{Type: TypeSystem, Message: reason})
-	h.broadcast(GamePacket{Type: TypeGame, State: h.state})
+}
+
+// stopTimer also invalidates a timeout that already fired and waits for the lock.
+func (h *Hub) stopTimer() {
+	h.roundID++
+	if h.timer != nil {
+		h.timer.Stop()
+		h.timer = nil
+	}
+}
+
+func (h *Hub) timeUp(id int) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if id != h.roundID {
+		return
+	}
+	h.broadcast(ChatPacket{Type: TypeSystem, Message: "Time's up!"})
+	h.endRound(nil, 0)
+}
+
+func pointsFor(remaining, total time.Duration) int {
+	if total <= 0 {
+		return minPoints
+	}
+	return max(int(maxPoints*remaining/total), minPoints)
 }
