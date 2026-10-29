@@ -84,6 +84,13 @@ A stroke is one drawing operation, coordinates are in `[0, 1]`:
 
 `begin: true` marks the first stroke of an action, which is what `undo` removes.
 
+## Interface
+
+- Every page (lobby, room, admin) has a 🌙 / ☀️ button in its header to switch between the light and dark themes.
+- The choice is saved in the browser (`localStorage` key `color-scheme`); without one, the system preference is used.
+- The canvas stays white in both themes so that drawing colors look the same for everyone.
+- Colors are CSS variables in `web/style.css`, redefined under `:root[data-theme="dark"]`; `web/theme.js` sets the theme before the page renders.
+
 ## Rules
 
 - The first player in a room is its admin and can start the game (2 to 10 players).
