@@ -1,8 +1,13 @@
 package main
 
 const (
+	KindLine  = "line"
+	KindSpray = "spray"
+	KindFill  = "fill"
+
 	minStrokeSize = 1
 	maxStrokeSize = 50
+	maxSprayDots  = 100
 )
 
 func (p Point) valid() bool {
@@ -10,9 +15,26 @@ func (p Point) valid() bool {
 }
 
 func (s Stroke) valid() bool {
-	return s.From.valid() && s.To.valid() &&
-		s.Size >= minStrokeSize && s.Size <= maxStrokeSize &&
-		isHexColor(s.Color)
+	if !isHexColor(s.Color) {
+		return false
+	}
+	switch s.Kind {
+	case KindLine:
+		return s.From.valid() && s.To.valid() && s.Size >= minStrokeSize && s.Size <= maxStrokeSize
+	case KindSpray:
+		if len(s.Points) == 0 || len(s.Points) > maxSprayDots || s.Size < minStrokeSize || s.Size > maxStrokeSize {
+			return false
+		}
+		for _, p := range s.Points {
+			if !p.valid() {
+				return false
+			}
+		}
+		return true
+	case KindFill:
+		return s.From.valid()
+	}
+	return false
 }
 
 func isHexColor(s string) bool {

@@ -33,7 +33,8 @@ Client to server:
 |---|---|
 | `nickname` | `nickname` |
 | `message` | `message` (a correct guess is not broadcast) |
-| `draw` | `stroke: {from: {x, y}, to: {x, y}, color, size}`, coordinates in `[0, 1]` |
+| `draw` | `stroke`, see below |
+| `undo` | removes the last action |
 | `clear` | |
 | `start` | admin only |
 | `theme` | `theme`, admin only before the game, empty for all themes |
@@ -44,7 +45,7 @@ Server to client:
 |---|---|
 | `nickname` | `id`, `nickname` |
 | `history` | `messages` |
-| `drawing` | `strokes` |
+| `drawing` | `strokes`, full redraw (on join and after an undo) |
 | `players` | `players: [{id, nickname, admin, drawer, score}]` |
 | `game` | `state`: `waiting` or `playing` |
 | `theme` | `theme`, `themes` |
@@ -53,6 +54,16 @@ Server to client:
 | `gameEnd` | `players` ranking, then the room is closed |
 | `message`, `system`, `error` | `message`, `nickname` |
 | `draw`, `clear` | same as client |
+
+A stroke is one drawing operation, coordinates are in `[0, 1]`:
+
+| kind | fields |
+|---|---|
+| `line` | `from`, `to`, `color`, `size` (brush and eraser) |
+| `spray` | `points` (up to 100 dots), `color`, `size` |
+| `fill` | `from`, `color` (flood fill) |
+
+`begin: true` marks the first stroke of an action, which is what `undo` removes.
 
 ## Rules
 

@@ -60,9 +60,47 @@ body {
 
 .toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.tools {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.tool {
+  padding: 0.25rem 0.4rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: #f3f3f3;
+  cursor: pointer;
+}
+
+.tool.active {
+  border-color: #1a6fd1;
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(7, 1.2rem);
+  gap: 2px;
+}
+
+.swatch {
+  width: 1.2rem;
+  height: 1.2rem;
+  padding: 0;
+  border: 1px solid #999;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.swatch.active {
+  outline: 2px solid #1a6fd1;
+  outline-offset: 1px;
 }
 
 #canvas {

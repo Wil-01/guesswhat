@@ -75,6 +75,8 @@ func (r *Room) handlePacket(c *Client, raw json.RawMessage) error {
 			return fmt.Errorf("invalid stroke %+v", p.Stroke)
 		}
 		return r.draw(c, p.Stroke)
+	case TypeUndo:
+		return r.undo(c)
 	case TypeClear:
 		return r.clear(c)
 	case TypeStart:

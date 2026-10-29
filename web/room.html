@@ -41,9 +41,17 @@
         <span id="timer" class="timer" hidden></span>
       </div>
       <div id="toolbar" class="toolbar">
-        <input id="color" type="color" value="#000000" aria-label="Couleur">
+        <div class="tools">
+          <button type="button" class="tool active" data-tool="brush" title="Pinceau">✏️</button>
+          <button type="button" class="tool" data-tool="eraser" title="Gomme">🧽</button>
+          <button type="button" class="tool" data-tool="spray" title="Spray">💨</button>
+          <button type="button" class="tool" data-tool="fill" title="Remplissage">🪣</button>
+        </div>
+        <div id="palette" class="palette"></div>
+        <input id="color" type="color" value="#000000" aria-label="Couleur personnalisée">
         <input id="size" type="range" min="1" max="50" value="4" aria-label="Épaisseur">
-        <button id="clear" type="button">Effacer</button>
+        <button id="undo" type="button" title="Annuler (Ctrl+Z)">↶</button>
+        <button id="clear" type="button" title="Tout effacer">🗑️</button>
       </div>
       <canvas id="canvas" width="800" height="600"></canvas>
     </section>

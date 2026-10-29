@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"testing"
 	"time"
 )
@@ -96,7 +97,7 @@ func TestClientRemovedOnDisconnect(t *testing.T) {
 	}
 }
 
-var testStroke = Stroke{From: Point{0.1, 0.1}, To: Point{0.5, 0.5}, Color: "#ff0000", Size: 4}
+var testStroke = Stroke{Kind: KindLine, From: Point{0.1, 0.1}, To: Point{0.5, 0.5}, Color: "#ff0000", Size: 4, Begin: true}
 
 func TestDrawBroadcastToOthers(t *testing.T) {
 	_, srv := newTestServer(t)
@@ -104,7 +105,7 @@ func TestDrawBroadcastToOthers(t *testing.T) {
 	bob := connect(t, srv)
 
 	send(t, alice.Conn, DrawPacket{Type: TypeDraw, Stroke: testStroke})
-	if got := expect(t, bob.Conn, TypeDraw).Stroke; got != testStroke {
+	if got := expect(t, bob.Conn, TypeDraw).Stroke; !reflect.DeepEqual(got, testStroke) {
 		t.Fatalf("got stroke %+v", got)
 	}
 	say(t, alice.Conn, "done")
@@ -119,7 +120,7 @@ func TestDrawingSentOnJoin(t *testing.T) {
 	expect(t, alice.Conn, TypeMessage)
 
 	d := connect(t, srv).drawing
-	if len(d) != 1 || d[0] != testStroke {
+	if len(d) != 1 || !reflect.DeepEqual(d[0], testStroke) {
 		t.Fatalf("got drawing %+v", d)
 	}
 }
@@ -144,15 +145,40 @@ func TestInvalidStrokeRejected(t *testing.T) {
 	alice := connect(t, srv)
 	bob := connect(t, srv)
 
-	bad := []Stroke{
-		{From: Point{-1, 0}, To: Point{0.5, 0.5}, Color: "#000000", Size: 4},
-		{From: Point{0, 0}, To: Point{0.5, 0.5}, Color: "red", Size: 4},
-		{From: Point{0, 0}, To: Point{0.5, 0.5}, Color: "#000000", Size: 500},
-	}
-	for _, s := range bad {
+	for _, s := range invalidStrokes {
 		send(t, alice.Conn, DrawPacket{Type: TypeDraw, Stroke: s})
 		expect(t, alice.Conn, TypeError)
 	}
 	say(t, alice.Conn, "after")
+	expect(t, bob.Conn, TypeMessage)
+}
+
+func TestUndoRemovesLastAction(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+
+	first := testStroke
+	second := Stroke{Kind: KindLine, From: Point{0.5, 0.5}, To: Point{0.6, 0.6}, Color: "#00ff00", Size: 2, Begin: true}
+	more := second
+	more.Begin = false
+	for _, s := range []Stroke{first, second, more} {
+		send(t, alice.Conn, DrawPacket{Type: TypeDraw, Stroke: s})
+		expect(t, bob.Conn, TypeDraw)
+	}
+
+	send(t, alice.Conn, Envelope{Type: TypeUndo})
+	for _, c := range []*testClient{alice, bob} {
+		d := expect(t, c.Conn, TypeDrawing).Strokes
+		if len(d) != 1 || !reflect.DeepEqual(d[0], first) {
+			t.Fatalf("got drawing %+v", d)
+		}
+	}
+	send(t, alice.Conn, Envelope{Type: TypeUndo})
+	if d := expect(t, bob.Conn, TypeDrawing).Strokes; len(d) != 0 {
+		t.Fatalf("got drawing %+v", d)
+	}
+	send(t, alice.Conn, Envelope{Type: TypeUndo})
+	say(t, alice.Conn, "nothing left")
 	expect(t, bob.Conn, TypeMessage)
 }
