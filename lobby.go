@@ -36,9 +36,10 @@ func newLobby() *Lobby {
 	return &Lobby{rooms: make(map[string]*Room), emptyTTL: defaultEmptyTTL}
 }
 
-func (l *Lobby) create(private bool) *Room {
+func (l *Lobby) create(private bool, theme string) *Room {
 	room := newRoom()
 	room.private = private
+	room.theme = theme
 	room.lobby = l
 
 	l.mu.Lock()
@@ -104,14 +105,23 @@ func (l *Lobby) handleList(w http.ResponseWriter, req *http.Request) {
 
 func (l *Lobby) handleCreate(w http.ResponseWriter, req *http.Request) {
 	var body struct {
-		Private bool `json:"private"`
+		Private bool   `json:"private"`
+		Theme   string `json:"theme"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, req.Body, 1024)).Decode(&body); err != nil && err != io.EOF {
 		http.Error(w, "invalid body: "+err.Error(), http.StatusBadRequest)
 		return
 	}
-	room := l.create(body.Private)
+	if !validTheme(body.Theme) {
+		http.Error(w, fmt.Sprintf("%v %q", errUnknownTheme, body.Theme), http.StatusBadRequest)
+		return
+	}
+	room := l.create(body.Private, body.Theme)
 	writeJSON(w, http.StatusCreated, map[string]string{"code": room.code})
+}
+
+func handleThemes(w http.ResponseWriter, req *http.Request) {
+	writeJSON(w, http.StatusOK, themeNames())
 }
 
 func (l *Lobby) handleWS(conn *websocket.Conn) {

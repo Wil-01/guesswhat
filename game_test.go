@@ -1,6 +1,7 @@
 package main
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -256,5 +257,67 @@ func TestPointsFor(t *testing.T) {
 		if got := pointsFor(c.remaining, 80*time.Second); got != c.want {
 			t.Errorf("pointsFor(%v) = %d, want %d", c.remaining, got, c.want)
 		}
+	}
+}
+
+func TestThemesSentOnJoin(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	if alice.theme.Theme != "" || !slices.Equal(alice.theme.Themes, themeNames()) {
+		t.Fatalf("got theme packet %+v", alice.theme)
+	}
+}
+
+func TestSetTheme(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+
+	send(t, alice.Conn, ThemePacket{Type: TypeTheme, Theme: "animaux"})
+	for _, c := range []*testClient{alice, bob} {
+		if got := expect(t, c.Conn, TypeTheme).Theme; got != "animaux" {
+			t.Fatalf("got theme %q", got)
+		}
+	}
+	r := startGame(t, alice, alice, bob)
+	for c, p := range r.packets {
+		if p.Theme != "animaux" {
+			t.Fatalf("client %d got round theme %q", c.id, p.Theme)
+		}
+	}
+	if !slices.Contains(themes["animaux"], r.word) {
+		t.Fatalf("%q is not an animal", r.word)
+	}
+}
+
+func TestMixedThemeTellsWordTheme(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+	r := startGame(t, alice, alice, bob)
+
+	theme := r.packets[r.guesser()].Theme
+	if !slices.Contains(themes[theme], r.word) {
+		t.Fatalf("%q is not in theme %q", r.word, theme)
+	}
+}
+
+func TestSetThemeRejected(t *testing.T) {
+	_, srv := newTestServer(t)
+	alice := connect(t, srv)
+	bob := connect(t, srv)
+
+	send(t, bob.Conn, ThemePacket{Type: TypeTheme, Theme: "animaux"})
+	if got := expect(t, bob.Conn, TypeError).Message; got != errNotAdmin.Error() {
+		t.Fatalf("got error %q", got)
+	}
+	send(t, alice.Conn, ThemePacket{Type: TypeTheme, Theme: "nope"})
+	if got := expect(t, alice.Conn, TypeError).Message; !strings.HasPrefix(got, errUnknownTheme.Error()) {
+		t.Fatalf("got error %q", got)
+	}
+	startGame(t, alice, alice, bob)
+	send(t, alice.Conn, ThemePacket{Type: TypeTheme, Theme: "animaux"})
+	if got := expect(t, alice.Conn, TypeError).Message; got != errAlreadyStarted.Error() {
+		t.Fatalf("got error %q", got)
 	}
 }

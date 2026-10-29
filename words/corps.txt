@@ -1,0 +1,10 @@
+bouche
+cheveux
+coeur
+dent
+genou
+main
+nez
+oeil
+oreille
+pied

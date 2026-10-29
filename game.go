@@ -53,7 +53,7 @@ func (r *Room) startRound(previous *Client) {
 	drawer := r.pickDrawer(previous)
 	r.round++
 	r.drawer = drawer
-	r.word = randomWord()
+	r.word, r.wordTheme = randomWord(r.theme)
 	r.roundID++
 	r.roundEndsAt = time.Now().Add(r.roundDuration)
 	id := r.roundID
@@ -76,6 +76,7 @@ func (r *Room) roundPacket(c *Client) RoundPacket {
 		Remaining: max(time.Until(r.roundEndsAt), 0).Milliseconds(),
 		Round:     r.round,
 		Rounds:    r.rounds,
+		Theme:     r.wordTheme,
 	}
 	if c == r.drawer {
 		p.Word = r.word

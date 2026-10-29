@@ -22,13 +22,14 @@ func newServer(l *Lobby) (http.Handler, error) {
 	mux.Handle("/", http.FileServerFS(static))
 	mux.HandleFunc("GET /api/rooms", l.handleList)
 	mux.HandleFunc("POST /api/rooms", l.handleCreate)
+	mux.HandleFunc("GET /api/themes", handleThemes)
 	mux.Handle("/ws", websocket.Handler(l.handleWS))
 	return mux, nil
 }
 
 func main() {
-	if len(words) == 0 {
-		fmt.Fprintln(os.Stderr, "no words to play with")
+	if themesErr != nil {
+		fmt.Fprintln(os.Stderr, "cannot load words:", themesErr)
 		os.Exit(84)
 	}
 	port := os.Getenv("PORT")

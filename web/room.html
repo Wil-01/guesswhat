@@ -26,11 +26,17 @@
     <aside class="players">
       <h2>Joueurs</h2>
       <ul id="players"></ul>
+      <label class="theme-picker">Thème
+        <select id="theme" disabled>
+          <option value="">Tous les thèmes</option>
+        </select>
+      </label>
       <button id="start" type="button" hidden>Start</button>
     </aside>
     <section class="board">
       <div class="round-info">
         <span id="round" class="round" hidden></span>
+        <span id="round-theme" class="round" hidden></span>
         <span id="word" class="word" hidden></span>
         <span id="timer" class="timer" hidden></span>
       </div>

@@ -27,6 +27,8 @@ type anyPacket struct {
 	Points   int          `json:"points"`
 	Round    int          `json:"round"`
 	Rounds   int          `json:"rounds"`
+	Theme    string       `json:"theme"`
+	Themes   []string     `json:"themes"`
 }
 
 type testClient struct {
@@ -36,6 +38,7 @@ type testClient struct {
 	history  []ChatPacket
 	drawing  []Stroke
 	round    anyPacket
+	theme    anyPacket
 }
 
 func newTestServer(t *testing.T) (*Room, *httptest.Server) {
@@ -113,6 +116,7 @@ func join(t *testing.T, ws *websocket.Conn) *testClient {
 	c := &testClient{Conn: ws, id: welcome.ID, nickname: welcome.Nickname}
 	c.history = expect(t, ws, TypeHistory).Messages
 	c.drawing = expect(t, ws, TypeDrawing).Strokes
+	c.theme = expect(t, ws, TypeTheme)
 	if expect(t, ws, TypeGame).State == StatePlaying {
 		c.round = expect(t, ws, TypeRound)
 	}

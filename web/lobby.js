@@ -1,5 +1,6 @@
 const nicknameInput = document.getElementById("nickname");
 const privateInput = document.getElementById("private");
+const themeSelect = document.getElementById("theme");
 const createButton = document.getElementById("create");
 const createError = document.getElementById("create-error");
 const joinForm = document.getElementById("join-form");
@@ -30,7 +31,7 @@ createButton.addEventListener("click", async () => {
     const res = await fetch("/api/rooms", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ private: privateInput.checked }),
+      body: JSON.stringify({ private: privateInput.checked, theme: themeSelect.value }),
     });
     if (!res.ok) throw new Error(await res.text());
     const { code } = await res.json();
@@ -66,12 +67,29 @@ function renderRooms(rooms) {
       link.href = `/room.html?code=${encodeURIComponent(room.code)}`;
       link.querySelector(".code").textContent = room.code;
       const state = room.state === "playing" ? "en jeu" : "en attente";
-      link.querySelector(".meta").textContent = `${room.players}/${MAX_PLAYERS} joueurs · ${state}`;
+      const theme = room.theme ? themeLabel(room.theme) : "Tous les thèmes";
+      link.querySelector(".meta").textContent = `${theme} · ${room.players}/${MAX_PLAYERS} joueurs · ${state}`;
       return li;
     })
   );
 }
 
+function themeLabel(theme) {
+  return theme.charAt(0).toUpperCase() + theme.slice(1);
+}
+
+async function loadThemes() {
+  try {
+    const res = await fetch("/api/themes");
+    if (!res.ok) throw new Error(res.statusText);
+    const themes = await res.json();
+    themeSelect.append(...themes.map((theme) => new Option(themeLabel(theme), theme)));
+  } catch (err) {
+    console.error("cannot list themes:", err);
+  }
+}
+
 document.getElementById("refresh").addEventListener("click", refreshRooms);
+loadThemes();
 refreshRooms();
 setInterval(refreshRooms, 3000);
